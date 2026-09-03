@@ -1,0 +1,6 @@
+# Deliberately NOT installed into an isolated venv -- see README.md "Setup" for why. These
+# three packages should be installed into the same global interpreter that already has
+# fastapi/uvicorn/kafka-python/crm_shared for every service under server/services/.
+httpx
+pytest
+python-dotenv
