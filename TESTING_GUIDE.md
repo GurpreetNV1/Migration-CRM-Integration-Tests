@@ -11,6 +11,33 @@ that. This file is the "what do I actually type" version.
 
 ---
 
+## 0. Scope — which services this actually covers
+
+The backend has 19 service folders under `server/services/`, but only **14 are actually built**
+(real logic inside) — the other 5 are empty scaffolds (folder structure + a bare `main.py`, no
+controllers/models/routes, no tests of their own). This suite only tests the 14 that exist:
+
+**Tested (14):** `01_user_service`, `02_application_service`, `03_task_service`,
+`04_reminder_service`, `07_graphics_service`, `09_support_service`, `11_data_import_service`,
+`12_data_gateway_service`, `13_auth_service`, `14_admin_module`, `16_backup_restore_service`,
+`17_audit_service`, `18_cleanup_service`, `19_notes_service`.
+
+**Not built yet — nothing to test (5):**
+
+| Service folder | Meant to be |
+|---|---|
+| `05_email_draft_service` | Email Drafting |
+| `06_reports_service` | Reports |
+| `08_client_portal_service` | Client Portal |
+| `10_regional_office_service` | Regional/Office Management |
+| `15_otp_forwarding_module` | OTP Forwarding |
+
+These 5 were deferred to Phase 2 in the sprint scoping decision — not accidentally skipped. If
+you're asked "why isn't X covered" during a demo, this is why: there's no code there yet to run a
+test against.
+
+---
+
 ## 1. One-time setup (skip if you've already done this before)
 
 **a. Install this repo's own light test dependencies** (httpx, pytest, python-dotenv, bcrypt)
