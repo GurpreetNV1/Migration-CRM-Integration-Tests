@@ -1,6 +1,10 @@
 # Deliberately NOT installed into an isolated venv -- see README.md "Setup" for why. These
-# three packages should be installed into the same global interpreter that already has
-# fastapi/uvicorn/kafka-python/crm_shared for every service under server/services/.
+# packages should be installed into the same global interpreter that already has
+# fastapi/uvicorn/kafka-python/crm_shared for every service under server/services/ (most
+# services now also have their own per-service .venv -- see README.md "Real Google Sheets").
 httpx
 pytest
 python-dotenv
+# Only for test_auth_login_against_real_gateway_credentials.py -- hashes a known test password
+# the same way Auth Service's own BcryptPasswordHasher does, to seed a real Auth_Credentials row.
+bcrypt

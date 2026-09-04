@@ -12,16 +12,19 @@ import uuid
 import httpx
 
 from conftest import seed_gateway_record
+from gateway_retry import call_with_quota_backoff
 
 
 def _poll_audit_trail(audit_url: str, target_type: str, target_id: str, timeout_seconds: float = 20):
     deadline = time.monotonic() + timeout_seconds
     last: list = []
     while time.monotonic() < deadline:
-        response = httpx.get(
-            f"{audit_url}/audit-logs",
-            params={"target_type": target_type, "target_id": target_id},
-            timeout=5,
+        response = call_with_quota_backoff(
+            lambda: httpx.get(
+                f"{audit_url}/audit-logs",
+                params={"target_type": target_type, "target_id": target_id},
+                timeout=20,
+            )
         )
         response.raise_for_status()
         last = response.json()
@@ -52,7 +55,7 @@ def test_application_created_event_reaches_audit_service(gateway_url, audit_serv
             "visa_type": visa_type,
             "dynamic_fields": {},
         },
-        timeout=5,
+        timeout=20,
     )
     assert create_response.status_code == 201, create_response.text
     application_id = create_response.json()["application_id"]

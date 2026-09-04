@@ -27,7 +27,7 @@ def test_poster_lifecycle_create_to_publish_and_kpi(gateway_url, business_servic
             "pii_masking_applied": True,
             "raw_generation_text": "Draft copy for the poster.",
         },
-        timeout=5,
+        timeout=20,
     )
     assert create_response.status_code == 201, create_response.text
     request_id = create_response.json()["request_id"]
@@ -41,7 +41,7 @@ def test_poster_lifecycle_create_to_publish_and_kpi(gateway_url, business_servic
     accept_response = httpx.post(
         f"{graphics_url}/content-requests/{request_id}/accept",
         json={"designer_staff_id": designer_id},
-        timeout=5,
+        timeout=20,
     )
     assert accept_response.status_code == 200, accept_response.text
     assert accept_response.json()["status"] == "in_progress"
@@ -49,7 +49,7 @@ def test_poster_lifecycle_create_to_publish_and_kpi(gateway_url, business_servic
     review_response = httpx.post(
         f"{graphics_url}/content-requests/{request_id}/submit-review",
         json={"actor_id": designer_id},
-        timeout=5,
+        timeout=20,
     )
     assert review_response.status_code == 200, review_response.text
     assert review_response.json()["status"] == "review"
@@ -57,7 +57,7 @@ def test_poster_lifecycle_create_to_publish_and_kpi(gateway_url, business_servic
     approve_response = httpx.post(
         f"{graphics_url}/content-requests/{request_id}/approve",
         json={"actor_id": staff_id},  # poster requires no client approval -> creator approves
-        timeout=5,
+        timeout=20,
     )
     assert approve_response.status_code == 200, approve_response.text
     assert approve_response.json()["status"] == "completed"
@@ -65,7 +65,7 @@ def test_poster_lifecycle_create_to_publish_and_kpi(gateway_url, business_servic
     publish_response = httpx.post(
         f"{graphics_url}/content-requests/{request_id}/publish",
         json={"platforms": ["instagram"]},
-        timeout=5,
+        timeout=20,
     )
     assert publish_response.status_code == 200, publish_response.text
     outcomes = publish_response.json()["outcomes"]
@@ -75,7 +75,7 @@ def test_poster_lifecycle_create_to_publish_and_kpi(gateway_url, business_servic
     kpi_response = httpx.get(
         f"{graphics_url}/kpis/summary",
         params={"created_by_staff_id": staff_id},
-        timeout=5,
+        timeout=20,
     )
     assert kpi_response.status_code == 200, kpi_response.text
     summary = kpi_response.json()["summary"]
