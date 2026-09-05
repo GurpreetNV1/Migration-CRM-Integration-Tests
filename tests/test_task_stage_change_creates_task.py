@@ -19,7 +19,7 @@ import uuid
 
 import httpx
 
-from conftest import seed_gateway_record
+from conftest import seed_gateway_record, seed_gateway_record_if_missing
 from gateway_retry import call_with_quota_backoff
 
 # Each poll here reads through the real Gateway (Application + compliance-status rows), so a
@@ -28,6 +28,14 @@ from gateway_retry import call_with_quota_backoff
 # budget. Widened for headroom against that latency variance, not because the flow is slow.
 POLL_INTERVAL_SECONDS = 1.0
 POLL_TIMEOUT_SECONDS = 45
+
+# User Service's contact-creation path (hit below) requires this config to exist, same as
+# test_user_contact_rating_against_real_config.py. This test used to silently rely on that other
+# file already having seeded it -- true only by accident of alphabetical run order and years of
+# leftover real Sheets state. Confirmed live: it breaks the moment the sheets are ever cleared,
+# since this file runs before that one. Seeding it here too (idempotently) removes that hidden
+# cross-file, run-order dependency entirely.
+RATING_LADDER_DEFAULT = ["Lost", "Cold", "Warm", "Hot"]
 
 
 def _poll_until(predicate, timeout_seconds: float = POLL_TIMEOUT_SECONDS):
@@ -49,6 +57,17 @@ def test_full_registration_gate_publishes_stage_changed_and_task_service_creates
         gateway_url,
         "Application_Type_Field_Schemas",
         {"id": visa_type, "visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps([])},
+        caller="admin-module",
+    )
+    seed_gateway_record_if_missing(
+        gateway_url,
+        "System_Config",
+        "rating_ladder",
+        {
+            "config_key": "rating_ladder",
+            "config_value": json.dumps(RATING_LADDER_DEFAULT),
+            "description": "",
+        },
         caller="admin-module",
     )
 
