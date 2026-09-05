@@ -17,8 +17,11 @@ import httpx
 
 from conftest import PORTS, seed_gateway_record, start_service
 
+# Same real-latency margin issue confirmed in test_task_stage_change_creates_task.py: a poll that
+# reads through the real Gateway can alone cost 4-6s on a slow day, leaving too little room in a
+# tight 20s budget.
 POLL_INTERVAL_SECONDS = 1.0
-POLL_TIMEOUT_SECONDS = 20
+POLL_TIMEOUT_SECONDS = 40
 
 
 def _poll_until(predicate, timeout_seconds: float = POLL_TIMEOUT_SECONDS):

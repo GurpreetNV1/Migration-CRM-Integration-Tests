@@ -6,6 +6,53 @@ HTTP/Kafka. This is **not** the same thing as each service's own `tests/integrat
 `TestClient` against an in-memory Gateway, fully isolated). This repo proves the *system*, not
 one service in isolation.
 
+This repo is also now the **single centralized place to run all testing** for the project, not
+just the cross-service suite — see "Three kinds of testing" below. Step-by-step run instructions
+(commands, prerequisites, troubleshooting) are in `TESTING_GUIDE.md`; this file is the narrative
+of what's here and why.
+
+## Three kinds of testing here
+
+| | Unit tests (607) | Per-service integration tests (210) | Cross-service tests (11, growing) |
+|---|---|---|---|
+| Command | `python run_unit_tests.py` | `python run_service_integration_tests.py` | `pytest tests/ -v` |
+| What it starts | Nothing — one class/function at a time, everything else mocked | Nothing — FastAPI's `TestClient`, in-process, against that service's in-memory Gateway stand-in | Real `uvicorn` subprocesses, real Kafka, real Google Sheets/Drive |
+| Proves | One unit of business logic in isolation | One service's own HTTP layer + business logic + repository wired together correctly | Multiple independently-running real services actually work together over a real network |
+| Runtime | seconds | under a minute (all 15 services) | ~7 minutes |
+| Lives in | `server/services/<service>/tests/unit/` | `server/services/<service>/tests/integration/` | this repo's own `tests/` |
+| Full index | `catalog/README.md` | `catalog/README.md` | `catalog/README.md`'s "True cross-service tests" section |
+
+**Why the first two tiers use an in-memory Gateway stand-in instead of real Google Sheets:** the
+Google account backing this project has a *permanent* ceiling of 60 Sheets/Drive API requests per
+minute (see `server/gaps-in-services/Pending_Items.md`) — a hard cap, not a temporary block. 817
+tests running against a real Gateway would mean hundreds to thousands of real API calls just for
+that tier, blowing well past that ceiling before even reaching the 11 cross-service tests, and
+turning a sub-minute run into one measured in tens of minutes, gated on quota backoff. The
+in-memory stand-in has correct read/write/query semantics (it's what most of these 817 tests
+actually exercise), so it's the right tool for proving business logic; it's specifically real
+Gateway *behavior* (merge semantics, boolean coercion, schema/column drift, concurrent-access
+thread-safety) that it can't catch — which is exactly what the 11 cross-service tests, plus a
+small number of new targeted real-Sheets tests (see "Planned additions" below), exist to cover
+instead, deliberately kept small so the quota ceiling stays a non-issue.
+
+Neither `run_unit_tests.py` nor `run_service_integration_tests.py` contains or duplicates any
+test — both are thin orchestrators that `cd` into each built service under `server/services/` and
+run that service's own already-existing `pytest tests/unit/` or `tests/integration/`, using that
+service's own `.venv` if it has one. Run one service only with `--service task` (see
+`_test_runner_common.py`'s `ALL_SERVICE_DIRS` for every valid name). Any extra flags (`-v`,
+`-k <expr>`, etc.) pass straight through to pytest.
+
+## Planned additions
+
+Two deliberately small, targeted additions to close the specific gap the in-memory tiers can't
+cover, without touching the 210/607 split above or the quota budget it depends on:
+- **~1 real-Sheets schema/coercion test per service (~15 new)** — checks that service's actual
+  assumed tab schema and field types still match the live sheet, the exact class of bug (header
+  drift, boolean-as-string coercion) that's bitten this project before.
+- **2-3 new flagship cross-service flows** — same shape as the existing 11, covering real
+  business flows not yet exercised end-to-end (candidates: an RFI-request flow, a
+  compliance-status-change flow, an escalation flow).
+
 ## Setup (one-time)
 
 Most services under `server/services/` now have their own isolated `.venv` (created inside that
@@ -48,11 +95,15 @@ python -m pip install -r requirements.txt
      rows) are seeded idempotently via `seed_gateway_record_if_missing` since they're addressed by
      a fixed key, not a UUID.
 
-## Running
+## Running the cross-service suite (this repo's 11 tests)
 
 ```
 pytest tests/ -v
 ```
+
+For the other 817 tests (every built service's own suite, fast, in-memory), use
+`python run_unit_tests.py` / `python run_service_integration_tests.py` instead — see "Three kinds
+of testing" above.
 
 Each test file shares one session-scoped real Gateway (+ Audit Service, where needed) — real
 Sheets-backed startup alone takes 30-90s (~1 read per tab across ~37 tabs), paid once for the

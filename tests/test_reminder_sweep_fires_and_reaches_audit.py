@@ -20,8 +20,11 @@ import httpx
 
 from gateway_retry import call_with_quota_backoff
 
+# Same real-latency margin issue confirmed in test_task_stage_change_creates_task.py: each poll
+# here reads the reminder back through the real Gateway, which alone can cost 4-6s on a slow day,
+# leaving too little room in a tight 20s budget for the sweep to also have fired it by then.
 POLL_INTERVAL_SECONDS = 1.0
-POLL_TIMEOUT_SECONDS = 20
+POLL_TIMEOUT_SECONDS = 40
 
 
 def _poll_until(predicate, timeout_seconds: float = POLL_TIMEOUT_SECONDS):

@@ -19,8 +19,12 @@ import httpx
 from conftest import seed_gateway_record
 from gateway_retry import call_with_quota_backoff
 
+# Each poll here reads through the real Gateway (Application + compliance-status rows), so a
+# single check already costs 4-6s of real Sheets round-trip on a slow day -- confirmed live, a
+# run this test previously passed reliably failed once with only ~5 iterations fitting in a 25s
+# budget. Widened for headroom against that latency variance, not because the flow is slow.
 POLL_INTERVAL_SECONDS = 1.0
-POLL_TIMEOUT_SECONDS = 25
+POLL_TIMEOUT_SECONDS = 45
 
 
 def _poll_until(predicate, timeout_seconds: float = POLL_TIMEOUT_SECONDS):
