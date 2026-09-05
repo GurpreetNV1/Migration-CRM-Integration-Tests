@@ -336,8 +336,16 @@ python run_unit_tests.py --service auth -v
 Neither script contains or duplicates any test itself — both are thin orchestrators that run each
 service's own already-existing `pytest tests/unit/` or `tests/integration/`, using that service's
 own `.venv` when one exists (falling back to the global interpreter otherwise, same rule
-`conftest.py` uses for the cross-service suite). The full plain-English breakdown of what every
-one of these 817 tests actually does is in `catalog/README.md` and its per-service files.
+`conftest.py` uses for the cross-service suite).
+
+**Where to find what each of these 817 tests actually does:**
+- **The 210 integration tests** (this section's `run_service_integration_tests.py`) — one line
+  per test, all in one place: `catalog/integration_tests_index.md`.
+- **The 607 unit tests** (this section's `run_unit_tests.py`) — no single consolidated index for
+  these (the largest, most narrow tier); full 50-60-word detail lives in each service's own
+  `catalog/<n>.md` file, under its `## Unit tests` section.
+- Every per-service `catalog/<n>.md` file also has the full 50-60-word detail for its own
+  integration tests too, if the one-liner in `integration_tests_index.md` isn't enough.
 
 ---
 
