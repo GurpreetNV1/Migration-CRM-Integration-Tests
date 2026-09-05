@@ -5,6 +5,8 @@ at "processing" forever. Against the real Gateway's actual ownership rules, impo
 service (it always identifies itself as "data-import-service"), so this specifically exercises
 the fixed failure path: before the fix, write_reconciled_batch's exception had no handler and
 ThreadPoolJobRunner's fire-and-forget submit() meant nobody ever recorded it.
+
+Services used: Data Gateway Service, Data Import Service.
 """
 
 from __future__ import annotations

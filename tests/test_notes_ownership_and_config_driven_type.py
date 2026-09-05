@@ -5,6 +5,8 @@ proves: a real member of that list is accepted and a bogus one is rejected (Note
 really reads live config through the real Gateway), and a different author's real, persisted
 author_id is correctly rejected by NoteOwnershipGuard on an update (not an in-memory fixture
 author that never round-trips through a real store).
+
+Services used: Data Gateway Service, Notes Service.
 """
 
 from __future__ import annotations

@@ -20,4 +20,11 @@ from __future__ import annotations
 from _test_runner_common import ALL_SERVICE_DIRS, run
 
 if __name__ == "__main__":
-    raise SystemExit(run(ALL_SERVICE_DIRS, "tests/integration/", "in-memory integration tests"))
+    raise SystemExit(
+        run(
+            ALL_SERVICE_DIRS,
+            "tests/integration/",
+            "in-memory integration tests",
+            "service_integration_test_runs",
+        )
+    )

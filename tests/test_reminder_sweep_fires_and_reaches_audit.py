@@ -8,6 +8,8 @@ work around) actually becomes due and gets picked up by a real background sweep 
 from Reminders_Pending to Reminders_History in real Sheets, and reaches Audit Service as a
 correctly-attributed real Kafka event -- one envelope per reminder, not a single batch event with
 no usable target_id.
+
+Services used: Data Gateway Service, Reminder Service, Audit Service (plus real Kafka).
 """
 
 from __future__ import annotations

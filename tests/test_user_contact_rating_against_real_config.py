@@ -5,6 +5,8 @@ or a manual session already set it up), then dynamically reads back whatever the
 ladder currently is rather than assuming its exact contents, and proves both a real member of
 that ladder and a genuinely unrecognized rating are handled correctly against real, persisted
 Sheets data.
+
+Services used: Data Gateway Service, User Service.
 """
 
 from __future__ import annotations

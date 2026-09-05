@@ -5,6 +5,8 @@ one genuinely old (past the 365-day Audit_Log retention window) and one recent A
 Cleanup Service has no REST surface at all (LLD: no inbound callers) -- it's started with a
 short scheduler interval and terminated immediately after its own effect is observed directly
 in the real Gateway, so its background thread never gets a second cycle to run.
+
+Services used: Data Gateway Service, Backup & Restore Service, Cleanup Service.
 """
 
 from __future__ import annotations

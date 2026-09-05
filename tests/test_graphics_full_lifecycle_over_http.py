@@ -2,6 +2,8 @@
 content request, accept it, submit it for review, approve it, publish it -- then confirm the KPI
 endpoint reflects the same real data it just wrote. Single service (Graphics), but every step is
 a real request against a real Gateway-backed process, not TestClient/in-memory.
+
+Services used: Data Gateway Service, Graphics Service.
 """
 
 from __future__ import annotations

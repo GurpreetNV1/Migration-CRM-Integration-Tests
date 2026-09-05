@@ -6,6 +6,9 @@ this session (the real event only ever carries application_id/from_stage/to_stag
 follow_up_due_date/assigned_staff_id fields the original rule assumed) actually works end to end,
 against real Sheets and real Drive, not the in-memory/mocked path each service's own test suite
 uses. Also confirms Audit Service saw the same event via its own real Kafka consumption.
+
+Services used: Data Gateway Service, User Service, Application Service, Task Service, Audit
+Service (plus real Kafka) -- the most services any single test in this suite exercises together.
 """
 
 from __future__ import annotations

@@ -3,6 +3,8 @@ Auth Service's own signup flow would, if one existed), then a separately running
 process, pointed at that same Gateway, authenticates against it. Proves Auth Service's real
 BcryptPasswordHasher and session-token issuance work against a real, persisted Sheets row -- not
 an in-memory fixture the per-service test suite would use instead.
+
+Services used: Data Gateway Service, Auth Service.
 """
 
 from __future__ import annotations

@@ -241,6 +241,9 @@ process-boundary it's proving, if you want more detail than the table above whil
   test that covers it (both this suite's and each service's own unit/integration tests), if you
   want the full inventory rather than just this suite's 11 files.
 
+(This is specific to the cross-service suite. Section 8's two commands save their own timestamped
+run logs separately — see that section.)
+
 ---
 
 ## 6. Common issues
@@ -312,6 +315,19 @@ Each takes well under a minute (Auth Service's own bcrypt hashing is the slowest
 contributor in either, a handful of seconds on its own). Both print one line per service
 (pass/fail + pytest's own summary line) and a grand total at the end; on any failure, that
 service's full pytest output is printed inline so you don't have to go dig for it.
+
+**Every run is also saved to a timestamped log file**, not just printed — so a run's result is
+still checkable later even if you weren't watching the terminal when it finished:
+`integration-tests/logs/unit_test_runs/<timestamp>.log` for `run_unit_tests.py`,
+`integration-tests/logs/service_integration_test_runs/<timestamp>.log` for
+`run_service_integration_tests.py`. The path is printed at the end of every run.
+
+The log file has more detail than the console on purpose: the console only ever shows one line
+per service (so a passing run of 817 tests doesn't scroll past in a wall of text), but the log
+file always contains every single individual test's name and PASSED/FAILED result — not just the
+aggregate count — for every service, whether it passed or failed. So if you ever need to confirm
+"did test X specifically run, and did it pass," the log file has that even when the console
+summary didn't show it.
 
 **Run just one service's suite**, with either command:
 

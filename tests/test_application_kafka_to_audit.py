@@ -2,6 +2,8 @@
 running Audit Service (its own real Kafka consumer) picks it up and makes it queryable over its
 own real HTTP API. Three real OS processes (Gateway, Audit Service, Application Service), one
 real local Kafka broker -- no TestClient, no in-memory stand-ins anywhere in this path.
+
+Services used: Data Gateway Service, Application Service, Audit Service (plus real Kafka).
 """
 
 from __future__ import annotations

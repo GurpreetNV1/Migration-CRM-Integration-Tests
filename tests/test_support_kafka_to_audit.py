@@ -1,6 +1,8 @@
 """Same cross-process pattern as test_application_kafka_to_audit.py, against Support Service --
 confirms real Kafka delivery into Audit Service is a repeatable system property, not a fluke of
 one service's wiring.
+
+Services used: Data Gateway Service, Support Service, Audit Service (plus real Kafka).
 """
 
 from __future__ import annotations

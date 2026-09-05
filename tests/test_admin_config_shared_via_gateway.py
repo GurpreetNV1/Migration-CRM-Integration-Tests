@@ -3,6 +3,8 @@ row via its own real HTTP API into the real Gateway process; a separately runnin
 Service process, pointed at that same Gateway, reads it live to validate a request. Two
 independent business services, one shared real Gateway, no direct service-to-service call at all
 -- the data itself is the integration point.
+
+Services used: Data Gateway Service, Admin Module, Application Service.
 """
 
 from __future__ import annotations

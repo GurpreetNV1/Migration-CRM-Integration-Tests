@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 SERVER_ROOT = Path(__file__).resolve().parent.parent / "server" / "services"
+LOG_ROOT = Path(__file__).resolve().parent / "logs"
 
 # Every service with at least one real test in either tests/unit/ or tests/integration/.
 # 05_email_draft_service has no real business logic yet (just a bare health check) and no
@@ -43,13 +44,36 @@ def _python_executable_for(service_dir: Path) -> str:
     return str(venv_python) if venv_python.exists() else sys.executable
 
 
+class _Tee:
+    """Prints to stdout and appends to an open log file at the same time, flushing immediately
+    so a run that's interrupted partway still leaves a complete log up to that point -- not
+    buffered in memory and lost if the process is killed mid-run.
+    """
+
+    def __init__(self, log_file) -> None:  # noqa: ANN001
+        self._log_file = log_file
+
+    def __call__(self, message: str = "") -> None:
+        print(message)
+        self._log_file.write(message + "\n")
+        self._log_file.flush()
+
+    def log_only(self, message: str = "") -> None:
+        # File only, no console print -- for the full per-test detail we always want saved but
+        # don't want flooding the terminal on a routine passing run.
+        self._log_file.write(message + "\n")
+        self._log_file.flush()
+
+
 def _run_one(
-    name: str, service_dir: Path, test_subpath: str, extra_args: list[str]
+    name: str, service_dir: Path, test_subpath: str, extra_args: list[str], log: _Tee
 ) -> tuple[bool, str, float]:
     python = _python_executable_for(service_dir)
     started = time.monotonic()
     result = subprocess.run(
-        [python, "-m", "pytest", test_subpath, *extra_args],
+        # -v so every individual test's PASSED/FAILED line (not just the aggregate count) is in
+        # the captured output -- always saved to the log file below, regardless of outcome.
+        [python, "-m", "pytest", test_subpath, "-v", *extra_args],
         cwd=service_dir,
         capture_output=True,
         text=True,
@@ -64,13 +88,20 @@ def _run_one(
         ),
         f"exit code {result.returncode}",
     )
+
+    header = f"\n{'-' * 70}\n{name} ({service_dir.name}) -- full pytest output\n{'-' * 70}"
+    log.log_only(header)
+    log.log_only(output)
     if result.returncode != 0:
-        print(f"\n{'=' * 70}\nFAILURE DETAIL: {name} ({service_dir.name})\n{'=' * 70}")
+        # Also surface it on-screen immediately -- a failure's detail shouldn't require opening
+        # the log file, only a passing run's per-test detail is file-only.
+        print(header)
         print(output)
+
     return result.returncode == 0, summary_line.strip(), elapsed
 
 
-def run(service_dirs: dict[str, Path], test_subpath: str, label: str) -> int:
+def run(service_dirs: dict[str, Path], test_subpath: str, label: str, log_subdir: str) -> int:
     parser = argparse.ArgumentParser(description=f"Run every built service's {label}.")
     parser.add_argument(
         "--service",
@@ -81,24 +112,34 @@ def run(service_dirs: dict[str, Path], test_subpath: str, label: str) -> int:
 
     targets = {args.service: service_dirs[args.service]} if args.service else service_dirs
 
-    print(f"Running {label} for {len(targets)} service(s)...\n")
-    results: list[tuple[str, bool, str, float]] = []
-    for name, service_dir in targets.items():
-        ok, summary, elapsed = _run_one(name, service_dir, test_subpath, extra_args)
-        results.append((name, ok, summary, elapsed))
-        status = "PASS" if ok else "FAIL"
-        print(f"  [{status}] {name:<12} ({service_dir.name}) -- {summary}  ({elapsed:.1f}s)")
+    log_dir = LOG_ROOT / log_subdir
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    log_path = log_dir / f"{timestamp}.log"
 
-    total_elapsed = sum(r[3] for r in results)
-    failed = [r for r in results if not r[1]]
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        log = _Tee(log_file)
+        log(f"Run started {time.strftime('%Y-%m-%d %H:%M:%S')} -- {label}, {len(targets)} service(s)")
+        log("")
 
-    print(f"\n{'=' * 70}")
-    print(
-        f"{len(targets) - len(failed)}/{len(targets)} service suites passed in "
-        f"{total_elapsed:.1f}s total"
-    )
-    if failed:
-        print("Failed: " + ", ".join(r[0] for r in failed))
-    print(f"{'=' * 70}")
+        results: list[tuple[str, bool, str, float]] = []
+        for name, service_dir in targets.items():
+            ok, summary, elapsed = _run_one(name, service_dir, test_subpath, extra_args, log)
+            results.append((name, ok, summary, elapsed))
+            status = "PASS" if ok else "FAIL"
+            log(f"  [{status}] {name:<12} ({service_dir.name}) -- {summary}  ({elapsed:.1f}s)")
 
+        total_elapsed = sum(r[3] for r in results)
+        failed = [r for r in results if not r[1]]
+
+        log(f"\n{'=' * 70}")
+        log(
+            f"{len(targets) - len(failed)}/{len(targets)} service suites passed in "
+            f"{total_elapsed:.1f}s total"
+        )
+        if failed:
+            log("Failed: " + ", ".join(r[0] for r in failed))
+        log(f"{'=' * 70}")
+
+    print(f"\nFull log saved to: {log_path}")
     return 1 if failed else 0

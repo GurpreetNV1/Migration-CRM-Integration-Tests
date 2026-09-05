@@ -23,4 +23,4 @@ from _test_runner_common import ALL_SERVICE_DIRS, run
 SERVICE_DIRS = {name: path for name, path in ALL_SERVICE_DIRS.items() if name != "email_draft"}
 
 if __name__ == "__main__":
-    raise SystemExit(run(SERVICE_DIRS, "tests/unit/", "unit tests"))
+    raise SystemExit(run(SERVICE_DIRS, "tests/unit/", "unit tests", "unit_test_runs"))
