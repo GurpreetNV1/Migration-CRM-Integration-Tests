@@ -1,0 +1,42 @@
+"""Wires app.state for the copied Reminder Service integration tests in this folder.
+
+Adapted from server/services/04_reminder_service/tests/conftest.py, which always forces an
+in-memory Gateway. This one branches on TEST_GATEWAY_MODE (set by
+run_local_integration_tests.py) so the exact same test bodies below can run against either
+backend -- the tests themselves only ever call TestClient(app); they have no idea which Gateway
+implementation is behind app.state.gateway.
+
+start_sweep_scheduler stays False in both modes -- only app.main.lifespan starts that background
+thread, which TestClient(app) never triggers unless used as a context manager (these tests
+don't), same reasoning as the original conftest.
+"""
+
+import os
+
+from app.main import app, build_app_state
+from app.settings import Settings
+
+_mode = os.environ.get("TEST_GATEWAY_MODE", "real")
+
+if _mode == "real":
+    _gateway_url = os.environ.get("TEST_GATEWAY_URL")
+    if not _gateway_url:
+        raise RuntimeError(
+            "TEST_GATEWAY_MODE=real requires TEST_GATEWAY_URL to be set -- run via "
+            "run_local_integration_tests.py, which starts the real Gateway and sets this "
+            "automatically."
+        )
+    # HttpDataGatewayClient's own retry (MAX_ATTEMPTS=3/BACKOFF_BASE_SECONDS=0.5) only rides out
+    # ~1.5s -- nowhere near the ~70s a real rolling-quota 503 needs (see
+    # integration-tests/gateway_retry.py). Widen it for this subprocess's lifetime only; no
+    # production code touched, no revert needed since this subprocess exits once its tests finish.
+    from data_gateway_client import http_client as _http_client_module
+
+    _http_client_module.MAX_ATTEMPTS = 3
+    _http_client_module.BACKOFF_BASE_SECONDS = 70
+    build_app_state(
+        app,
+        Settings(data_gateway_mode="http", data_gateway_url=_gateway_url, start_sweep_scheduler=False),
+    )
+else:
+    build_app_state(app, Settings(data_gateway_mode="memory", start_sweep_scheduler=False))

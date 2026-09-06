@@ -22,6 +22,29 @@ of what's here and why.
 | Lives in | `server/services/<service>/tests/unit/` | `server/services/<service>/tests/integration/` | this repo's own `tests/` |
 | Full index | `catalog/README.md` | `catalog/README.md` | `catalog/README.md`'s "True cross-service tests" section |
 
+**These 210 per-service integration tests also physically live in this repo now**, under
+`tests/service_integration/<service>/` — verbatim copies of the files in
+`server/services/<n>/tests/integration/` (the originals there are untouched and
+`run_service_integration_tests.py` above keeps working exactly as it always has, always in-memory).
+The copies are **dual-mode**, run with `python run_local_integration_tests.py`:
+
+```
+python run_local_integration_tests.py                        # default: real Data Gateway, real Google Sheets
+python run_local_integration_tests.py --gateway-mode memory   # fast, in-memory, no external dependency
+python run_local_integration_tests.py --service support       # just one service, either mode
+```
+
+**Real mode is the default, not memory** — every copied test writes to the real, shared Google
+Sheets unless you explicitly pass `--gateway-mode=memory`. One real Gateway subprocess is started
+once and shared across all 14 services (same `start_service`/quota-pacing machinery as the
+cross-service suite's own `gateway_url` fixture below), and each per-service copy's
+`HttpDataGatewayClient` retry budget is widened to the same quota-safe values `gateway_retry.py`
+uses, so a rolling-quota 503 mid-run is retried rather than failing the test. See
+`TESTING_GUIDE.md` section on this command for full details, and each `catalog/<service>.md` —
+the same test definitions apply unchanged to both the original in-memory-only location and this
+dual-mode copy, since every test only ever talks to `TestClient(app)` and has no idea which
+Gateway backend is behind it.
+
 **Why the first two tiers use an in-memory Gateway stand-in instead of real Google Sheets:** the
 Google account backing this project has a *permanent* ceiling of 60 Sheets/Drive API requests per
 minute (see `server/gaps-in-services/Pending_Items.md`) — a hard cap, not a temporary block. 817

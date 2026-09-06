@@ -80,6 +80,39 @@ Not yet built (no tests to catalog): Email Drafting logic itself (Email Draft Se
 health check so far — see its own catalog entry), Reports Service, Client Portal Service,
 Regional/Office Management Service, OTP Forwarding Module.
 
+**These 210 integration tests also physically live in this repo now**, under
+`../tests/service_integration/<service>/` — verbatim copies of the same files listed in each
+catalog above, runnable **dual-mode** (real Gateway/real Sheets by default, or fast in-memory)
+via `python run_local_integration_tests.py` — see `../README.md`/`../TESTING_GUIDE.md` section
+8.5. Every definition in the tables below and in `integration_tests_index.md` applies unchanged
+to both the original in-memory-only location and this dual-mode copy: each test only ever talks
+to `TestClient(app)` and has no idea which Gateway backend is behind it, so the story a test
+tells doesn't change based on which one actually receives the write.
+
+**Running these for the first time against the real Gateway found 4 more real, previously-invisible
+bugs**, in addition to the four already listed above — the same category of bug the true
+cross-service tests exist to catch, just surfaced here instead because these copies are the first
+time these particular 210 tests ever ran against anything but the in-memory stand-in:
+- **User Service's `Contact` repository read an unset optional field as `""` instead of `None`**
+  (real Sheets has no native null; the in-memory stand-in does), which made
+  `ContactService.link_sponsor`'s "already linked?" guard misfire on a completely fresh contact.
+  Fixed in `gateway_contact_repository.py`; same issue and fix in Graphics Service's
+  `gateway_content_request_file_repository.py` for `duration_seconds`.
+- **Graphics Service's `FileUploadService` called the Gateway client's generic `create()`
+  instead of `create_document()` for raw/deliverable file uploads** — silently worked against the
+  in-memory mock (no serialization), threw `TypeError: Object of type bytes is not JSON
+  serializable` against the real HTTP client. Fixed in `file_upload_service.py`.
+- **Admin Module's `DiscountCoupon` config registry let one malformed row crash every coupon
+  lookup** — `get_all()` never guarded per-row parsing, so a single bad `type`/`discount_value`
+  value taints the entire list. Fixed in `gateway_discount_coupon_repository.py` to skip and log
+  instead of raising.
+- **Data Import Service's core "import into any target entity type" feature cannot write into a
+  tab it doesn't own** (e.g. `Contact`, owned by user-service) — a real, already-anticipated
+  Gateway ownership rejection (see that service's own `ImportJobService._process_job` comment),
+  not a bug, but the original tests only ever ran in-memory and never actually exercised it; the
+  dual-mode copies assert the real "failed" outcome explicitly instead of the in-memory-only
+  "completed" one.
+
 ## Notable coverage gaps surfaced while cataloging (worth saying out loud in the demo, not hiding)
 
 - **Email Draft Service has only 1 test** (a bare health check) — none of its drafting, source

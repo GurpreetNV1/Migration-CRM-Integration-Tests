@@ -2,6 +2,8 @@
 
 This is a consolidated, at-a-glance index of the 210 per-service integration tests spread across this project's 15 backend services. Each test hits its own service's real HTTP routes through FastAPI's `TestClient`, but against an in-memory Data Gateway stand-in rather than real Google Sheets or Kafka — so every row below proves that one service's own HTTP + business-logic + repository layers work together correctly, NOT anything about cross-service behavior. The 11 tests that do prove genuine cross-process, cross-service behavior (real subprocesses, real Kafka, real Sheets) are documented separately in `README.md`. Full 50-60-word detail for any test below still lives in that service's own `catalog/<n>.md` file under its `## Integration tests` section.
 
+**These 210 tests also physically live in this repo now**, under `../tests/service_integration/<service>/`, and are **dual-mode**: run in-memory (as this page describes) or against the real Data Gateway Service/real Sheets, via `python run_local_integration_tests.py` (real is the default; `--gateway-mode=memory` opts into the fast, in-memory behavior this page documents) — see `../TESTING_GUIDE.md` section 8.5. Every definition below applies unchanged to both: the test only ever talks to `TestClient(app)`, never the Gateway backend directly, so the assertions and their meaning don't change based on which one is actually behind it. See `README.md`'s own note on this for the 4 real bugs that running these for the first time against the real Gateway found.
+
 ## User Service
 
 | Test | Proves |

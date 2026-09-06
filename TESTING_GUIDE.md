@@ -11,11 +11,14 @@ it, `README.md` in this same folder has that; this file is the "what do I actual
 |---|---|---|
 | `pytest tests/ -v` | 11 real cross-service tests — real subprocesses, real Kafka, real Google Sheets/Drive | 1-7 |
 | `python run_unit_tests.py` | 607 pure unit tests, in-memory, fast | 8 |
-| `python run_service_integration_tests.py` | 210 per-service tests (real HTTP routes, in-memory Gateway) | 8 |
+| `python run_service_integration_tests.py` | 210 per-service tests, reaching into `server/` (real HTTP routes, always in-memory Gateway) | 8 |
+| `python run_local_integration_tests.py` | The same 210 tests, copied into this repo, **dual-mode**: real Gateway/real Sheets by default, `--gateway-mode=memory` for fast/in-memory | 8.5 |
 
 The cross-service suite (sections 1-7) is the one that needs Docker/Kafka/real credentials and
-takes ~7 minutes; the other two (section 8) need none of that and take under a minute combined.
-Section 9 covers what's planned but not built yet.
+takes ~7 minutes; section 8's two commands need none of that and take under a minute combined.
+Section 8.5's command needs real credentials (like section 1-7) when run in its default real
+mode, or nothing at all with `--gateway-mode=memory`. Section 9 covers what's planned but not
+built yet.
 
 ---
 
@@ -362,6 +365,66 @@ own `.venv` when one exists (falling back to the global interpreter otherwise, s
   `catalog/<n>.md` file, under its `## Unit tests` section.
 - Every per-service `catalog/<n>.md` file also has the full 50-60-word detail for its own
   integration tests too, if the one-liner in `integration_tests_index.md` isn't enough.
+
+---
+
+## 8.5. Running the 210 per-service integration tests from *this* repo, dual-mode
+
+Section 8's `run_service_integration_tests.py` reaches into `server/services/<n>/tests/integration/`
+remotely — it never contains those tests. `run_local_integration_tests.py` is different: the same
+210 test files are also physically copied into this repo, under
+`tests/service_integration/<service>/` (the originals in `server/` are untouched — nothing there
+was removed or edited, and section 8's command still works exactly as it always has). The copies
+add one new capability the originals don't have: **choosing whether they run in-memory or against
+the real Data Gateway Service (real Google Sheets)**, via `--gateway-mode`.
+
+```
+cd integration-tests
+python run_local_integration_tests.py                        # default: real Gateway, real Sheets
+python run_local_integration_tests.py --gateway-mode memory   # fast, in-memory, no external dependency
+python run_local_integration_tests.py --service support       # just one service, either mode
+python run_local_integration_tests.py --service support -v -k test_create_ticket  # extra pytest args pass through
+```
+
+**Real mode is the default** — running the command with no flags writes real rows into the real,
+shared spreadsheets, exactly like section 3's cross-service suite. This means the same section 2
+prerequisites effectively apply: real credentials must already be configured (they are, in
+`server/services/12_data_gateway_service/.env`), and the same 60-requests/minute quota ceiling is
+shared. Unlike section 3, this command does **not** need Kafka or the 8500-8513 port range checked
+manually — it starts its own single real Gateway subprocess on port 8500 (tearing it down at the
+end), the same way `conftest.py`'s `gateway_url` fixture does; if that port is already occupied by
+a manual dev instance, stop that first (same as section 2b).
+
+**Why one shared Gateway instead of one per service:** the Gateway's own real-Sheets startup
+(rebuilding its row index, ~30-90s) is paid **once** for the whole run, then every one of the 14
+business services' copied tests points at that same running Gateway in turn — not 14 separate
+30-90s startups.
+
+**Quota safety:** each copied test folder's own `conftest.py` widens `HttpDataGatewayClient`'s
+retry budget (normally ~1.5s total) up to the same ~70s-per-attempt, 3-attempt budget
+`gateway_retry.py` uses for the cross-service suite, only for the lifetime of that one service's
+subprocess — so a 503 from a momentarily-exhausted quota window is retried instead of failing the
+test. If you see the run pause for up to ~70s on a given service, that's this working as intended,
+not a hang.
+
+**The Data Gateway Service's own copied tests are a special case**: unlike the other 13 services,
+it has no upstream Gateway to point at over HTTP — it *is* the thing that talks to real Sheets. Its
+real mode instead calls its own `load_settings()` (the same production config loader a real
+subprocess of it would use), picking up `DATA_BACKEND=google` and real credentials straight from
+its own `.env`.
+
+**`05_email_draft_service` has no dual-mode conftest at all** — it's still just the one bare
+health-check test (see section 0), with no Gateway dependency yet to toggle; it's copied and runs
+identically in either `--gateway-mode`.
+
+**Test definitions are unchanged** — every test's assertions are identical to what
+`catalog/<service>.md` and `catalog/integration_tests_index.md` already document for section 8's
+originals. The story a test tells doesn't change based on which Gateway backend is behind it; only
+whether the write actually reaches a real spreadsheet does.
+
+Each run is saved to `integration-tests/logs/local_integration_test_runs/<timestamp>_<mode>.log`
+(full per-service pytest output), same convention as section 8's own log files, with the path
+printed at the end of the run.
 
 ---
 
