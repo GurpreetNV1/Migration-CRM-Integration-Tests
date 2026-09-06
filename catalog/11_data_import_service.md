@@ -4,6 +4,8 @@ The Data-Import Service accepts bulk data-import jobs (recording source type, su
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/data_import/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service data_import`. Same definitions apply to both, though the real-mode copies of `test_job_completes_synchronously_under_the_test_inline_runner_and_report_is_correct` and `test_a_second_submission_of_the_same_row_is_skipped_as_a_duplicate` assert the real Gateway's own already-anticipated ownership-rejection outcome instead of "completed" (see `../README.md`'s note on this). See `../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Confirms that the Data-Import microservice itself starts up cleanly and answers requests before any import behavior is exercised. The test calls `GET /health` and checks for an HTTP 200 response with the exact body `{"status": "ok"}`. This is the baseline sanity check to run first in a demo: if the service isn't even reachable, none of the import, mapping, or duplicate-detection behavior shown afterward can be trusted.

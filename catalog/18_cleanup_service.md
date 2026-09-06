@@ -4,6 +4,8 @@ This service enforces retention and purge policies across the system's data, suc
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/cleanup/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service cleanup`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Checks that the Cleanup Service's health endpoint responds with HTTP 200 and a simple "status ok" message. This is the standard heartbeat check confirming the service process is running and reachable, which matters for monitoring even though this service has no other public-facing API for staff to call directly, since it runs entirely on its own schedule.

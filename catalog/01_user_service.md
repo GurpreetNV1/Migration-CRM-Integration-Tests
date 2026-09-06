@@ -4,6 +4,8 @@ The User Service manages the full Contact lifecycle (enquiry through prospect to
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/user/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service user`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_contacts_flow.py
 
 - **test_create_enquiry_defaults_to_cold_rating** — Submits a brand-new walk-in enquiry with just a source and a name, and confirms the API returns a 201 Created with a properly formatted contact ID (prefixed "CT-"), a rating that automatically defaults to "Cold," and a lifecycle state of "Enquiry." This proves a brand-new lead is captured and classified correctly with zero manual setup by staff.

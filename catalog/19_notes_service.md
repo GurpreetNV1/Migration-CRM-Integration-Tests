@@ -4,6 +4,8 @@ The Notes Service lets staff log free-text notes against a Contact or an Applica
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/notes/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service notes`. Same definitions apply to both, though the real-mode copy of `test_author_can_delete_their_own_note` asserts the real Gateway's already-documented 503 (missing `is_deleted` column on the real `Note` tab, a deferred spreadsheet-structure gap — see `Pending_Items.md`) instead of 204. See `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — This test proves the Notes Service is alive and reachable by calling the standard /health endpoint that monitoring and load-balancing tools rely on before routing real traffic. It checks that the response comes back with a success status and a simple confirmation message, giving operators an early, reliable signal that the service is ready to serve requests.

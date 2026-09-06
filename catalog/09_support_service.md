@@ -4,6 +4,8 @@ The Support Service manages support tickets raised against a polymorphic target 
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/support/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service support`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — This test hits the service's health-check endpoint with a simple GET request and confirms it returns HTTP 200 along with a plain `{"status": "ok"}` response body. It exists purely as an infrastructure smoke test — proof the Support Service process is up, responding, and wired correctly before any ticket-related functionality is exercised, which is exactly what uptime monitors and load balancers check.

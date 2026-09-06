@@ -4,6 +4,8 @@ The Admin Module is the system's control panel: one generic, config-type-driven 
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/admin/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service admin`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5. Running these for the first time against the real Gateway found a real bug: `GatewayDiscountCouponRepository.get_all()` let one malformed row crash every coupon lookup — now fixed to skip and log instead (see `../README.md`'s note on this).*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Confirms the service exposes a basic health-check endpoint that returns HTTP 200 with a simple `{"status": "ok"}` body. This is the kind of check load balancers, container orchestrators, and uptime monitors rely on to know the Admin Module is alive and ready to serve traffic before any real configuration work is attempted against it.

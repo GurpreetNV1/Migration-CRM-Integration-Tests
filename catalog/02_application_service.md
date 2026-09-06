@@ -4,6 +4,8 @@ This service manages visa applications end to end — the 4-stage pipeline, ART 
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/application/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service application`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Confirms the service's basic health-check endpoint responds successfully. A plain GET request to /health returns HTTP 200 with a simple `{"status": "ok"}` body. This is the same kind of check load balancers and monitoring dashboards rely on to know the Application Service is alive and reachable before real traffic gets routed to it, so a demo audience can trust the service is genuinely running.

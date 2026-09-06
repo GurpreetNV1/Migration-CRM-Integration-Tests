@@ -4,6 +4,8 @@ The Data Gateway Service is the single writer/reader gateway that every other bu
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/gateway/`, dual-mode (real Google Sheets/Drive by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service gateway`. Unlike every other service, this one has no upstream Gateway to point at over HTTP (it *is* the Gateway), so its real mode calls its own `load_settings()` directly rather than using a shared subprocess. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Checks that hitting the gateway's health endpoint returns a 200 response reporting status "ok" and confirms the in-memory row-index (the per-tab lookup table the gateway uses for fast lookups) has finished building and is ready. This matters because if the index isn't ready yet, every other service's reads and writes through the gateway could silently fail or return incomplete data.

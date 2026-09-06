@@ -4,6 +4,8 @@ The Auth Service authenticates staff and client logins by password or SSO identi
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/auth/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service auth`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Confirms the service exposes a working health-check endpoint that returns HTTP 200 with a simple `{"status": "ok"}` body. This is the basic signal that the service is alive and reachable, which every monitoring tool, load balancer, and deployment pipeline relies on before routing real traffic to it.

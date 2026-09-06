@@ -4,6 +4,8 @@ The Email Draft Service manages email drafts against a polymorphic target record
 
 ## Integration tests
 
+*This also lives at `../tests/service_integration/email_draft/` — copied as-is (no dual-mode conftest, since this service has no Gateway dependency yet to toggle) and runs identically under either `--gateway-mode` of `python run_local_integration_tests.py --service email_draft`. See `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Confirms that the Email Draft microservice starts up cleanly and its liveness endpoint responds correctly, which is the most basic proof of life a service can offer. The test calls `GET /health` and checks that it returns an HTTP 200 status together with the exact body `{"status": "ok"}`. In a live demo this is the check to run first: if it fails, the service isn't reachable at all, so nothing about drafting, templating, cc recipients, or the approval workflow can be trusted or shown until this passes.

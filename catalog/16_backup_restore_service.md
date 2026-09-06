@@ -4,6 +4,8 @@ This service manages scheduled and on-demand backups of the system's Sheets/Driv
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/backup/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service backup`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Checks that the service's health endpoint responds successfully with a simple "everything is fine" status. This is the basic heartbeat check that monitoring tools and orchestration platforms use to confirm the Backup & Restore Service is up and reachable before anyone routes real backup or restore traffic to it, catching outright outages immediately.

@@ -4,6 +4,8 @@ The Audit Service consumes change-events, delivered via Kafka in production or a
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/audit/`, dual-mode (real Data Gateway/real Sheets by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service audit`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_health.py
 
 - **test_health** — Checks that hitting the audit service's health endpoint returns a 200 response with a simple status of "ok." This is the most basic smoke test confirming the service is up and responding at all, which matters because every other publishing service depends on reliably being able to send audit events here.

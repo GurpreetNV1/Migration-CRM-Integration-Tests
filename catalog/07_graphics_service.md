@@ -4,6 +4,8 @@ The Graphics Service manages content requests (posters, videos, reels, carousels
 
 ## Integration tests
 
+*These also live at `../tests/service_integration/graphics/`, dual-mode (real Data Gateway/real Sheets and Drive by default, `--gateway-mode=memory` for the fast in-memory behavior described below) — run via `python run_local_integration_tests.py --service graphics`. Same definitions apply to both; see `../README.md`/`../TESTING_GUIDE.md` section 8.5.*
+
 ### tests/integration/test_ai_generation_flow.py
 
 - **test_poster_without_pii_masking_is_rejected_but_still_created** — Someone tries to create a poster request with raw text for AI summarization but without confirming that personally identifiable information has been masked first. The API blocks it with a validation error, but the request row is still saved as "pending" in the list. This proves the compliance guardrail (no ungoverned text reaches AI) works without silently losing the work item.
