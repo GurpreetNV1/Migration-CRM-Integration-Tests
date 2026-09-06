@@ -76,6 +76,29 @@ def test_update_record_overwrites_fields() -> None:
     assert response.json()["fields"]["status"] == "done"
 
 
+def test_batch_create_allocates_a_gateway_id_per_record() -> None:
+    response = client.post(
+        "/records/Task/batch-create",
+        json={"fields_list": [{"status": "open"}, {"status": "in_progress"}]},
+        headers=TASK_CALLER,
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert [r["fields"]["status"] for r in body] == ["open", "in_progress"]
+    assert len({r["record_id"] for r in body}) == 2
+    assert all(r["record_id"].startswith("TK-") for r in body)
+
+
+def test_batch_create_with_wrong_caller_returns_403() -> None:
+    response = client.post(
+        "/records/Task/batch-create",
+        json={"fields_list": [{"status": "open"}]},
+        headers={"X-Caller-Service": "application-service"},
+    )
+    assert response.status_code == 403
+
+
 def test_batch_get_preserves_requested_order() -> None:
     first = client.post(
         "/records/Task", json={"fields": {"status": "open"}}, headers=TASK_CALLER
