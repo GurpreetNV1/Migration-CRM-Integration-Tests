@@ -1,4 +1,3 @@
-import os
 import uuid
 
 from app.main import app
@@ -48,19 +47,12 @@ def test_job_completes_synchronously_under_the_test_inline_runner_and_report_is_
     status_response = client.get(f"/import-jobs/{submitted['import_job_id']}")
     report_response = client.get(f"/import-jobs/{submitted['import_job_id']}/report")
 
+    # Used to fail in real mode (Build_vs_Requirements_Audit.md audit item 7.2): the real
+    # Gateway rejected "Contact" creates from "data-import-service" since create was strictly
+    # owner-only with no exceptions. Fixed by adding an also_allow_create_by allowlist
+    # (12_data_gateway_service/app/config.py) and adding "data-import-service" to Contact's
+    # entry -- passes identically in both modes now.
     assert status_response.status_code == 200
-    if os.environ.get("TEST_GATEWAY_MODE", "real") == "real":
-        # Already-anticipated, intentionally-handled real-mode outcome -- see
-        # ImportJobService._process_job's own comment ("most commonly a real Gateway ownership
-        # rejection when target_entity_type isn't a tab this service is allowed to write") and
-        # server/gaps-in-services/Pending_Items.md's Epic 11 notes. Data Import Service writes
-        # directly into whatever tab a job targets (here, "Contact", owned by user-service) using
-        # its own caller identity -- the real Gateway correctly rejects that create with 403,
-        # which this service already catches and turns into a clean "failed" status rather than
-        # crashing or hanging. The in-memory stand-in never enforces ownership, so the original,
-        # always-in-memory test correctly expects "completed" there instead.
-        assert status_response.json()["status"] == "failed"
-        return
     assert status_response.json()["status"] == "completed"
     assert report_response.status_code == 200
     report = report_response.json()
@@ -119,14 +111,6 @@ def test_a_second_submission_of_the_same_row_is_skipped_as_a_duplicate() -> None
     first_report = client.get(f"/import-jobs/{first['import_job_id']}/report").json()
     second_report = client.get(f"/import-jobs/{second['import_job_id']}/report").json()
 
-    if os.environ.get("TEST_GATEWAY_MODE", "real") == "real":
-        # Same already-anticipated real-mode ownership rejection as
-        # test_job_completes_synchronously_under_the_test_inline_runner_and_report_is_correct
-        # above -- the first submission never actually reaches "imported" against the real
-        # Gateway, so there's nothing for the second to detect as a duplicate of.
-        assert first_report["records_imported"] == 0
-        assert second_report["records_imported"] == 0
-        return
     assert first_report["records_imported"] == 1
     assert second_report["records_imported"] == 0
     assert second_report["records_skipped_as_duplicate"] == 1

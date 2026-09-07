@@ -1,10 +1,12 @@
 """Real cross-process proof of this session's Data Import fix: a submitted job must always reach
 a real terminal status (completed, or a clean failed with a recorded reason) -- never get stuck
 at "processing" forever. Against the real Gateway's actual ownership rules, importing into
-"Contact" (owned exclusively by user-service, per TAB_OWNERSHIP) is a genuine 403 for this
-service (it always identifies itself as "data-import-service"), so this specifically exercises
-the fixed failure path: before the fix, write_reconciled_batch's exception had no handler and
-ThreadPoolJobRunner's fire-and-forget submit() meant nobody ever recorded it.
+"Application" (owned exclusively by application-service, per TAB_OWNERSHIP, and not on Data
+Import Service's own also_allow_create_by allowlist -- unlike "Contact", added there once real
+imports into it were confirmed needed, see Build_vs_Requirements_Audit.md section 7.2) is a
+genuine 403 for this service (it always identifies itself as "data-import-service"), so this
+specifically exercises the fixed failure path: before the fix, write_reconciled_batch's exception
+had no handler and ThreadPoolJobRunner's fire-and-forget submit() meant nobody ever recorded it.
 
 Services used: Data Gateway Service, Data Import Service.
 """
@@ -45,9 +47,9 @@ def test_a_submitted_job_never_hangs_at_processing(gateway_url, business_service
             json={
                 "source_type": "csv",
                 "submitted_by": f"STF-{uuid.uuid4().hex[:8]}",
-                "target_entity_type": "Contact",
-                "field_map": {"Name": "full_name", "Email": "primary_email"},
-                "raw_input": f"Name,Email\r\nJane {uuid.uuid4().hex[:6]},jane@example.com\r\n",
+                "target_entity_type": "Application",
+                "field_map": {"Name": "primary_applicant_contact_id"},
+                "raw_input": f"Name\r\nCT-{uuid.uuid4().hex[:6]}\r\n",
             },
             timeout=20,
         )
@@ -73,10 +75,10 @@ def test_a_submitted_job_never_hangs_at_processing(gateway_url, business_service
         "queued/processing, which is exactly the bug this fix was meant to close"
     )
 
-    # "Contact" is owned exclusively by user-service in the real Gateway's TAB_OWNERSHIP, and
-    # this service always identifies itself as "data-import-service" -- a real 403 is the
-    # expected, correct outcome here, and the fix's job is to make sure it's recorded cleanly
-    # rather than silently hanging.
+    # "Application" is owned exclusively by application-service in the real Gateway's
+    # TAB_OWNERSHIP, and this service always identifies itself as "data-import-service" -- a
+    # real 403 is the expected, correct outcome here, and the fix's job is to make sure it's
+    # recorded cleanly rather than silently hanging.
     if final["status"] == "failed":
         report = httpx.get(f"{data_import_url}/import-jobs/{job_id}/report", timeout=20)
         assert report.status_code == 200, report.text

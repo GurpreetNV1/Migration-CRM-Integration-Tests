@@ -106,12 +106,22 @@ time these particular 210 tests ever ran against anything but the in-memory stan
   lookup** — `get_all()` never guarded per-row parsing, so a single bad `type`/`discount_value`
   value taints the entire list. Fixed in `gateway_discount_coupon_repository.py` to skip and log
   instead of raising.
-- **Data Import Service's core "import into any target entity type" feature cannot write into a
-  tab it doesn't own** (e.g. `Contact`, owned by user-service) — a real, already-anticipated
-  Gateway ownership rejection (see that service's own `ImportJobService._process_job` comment),
-  not a bug, but the original tests only ever ran in-memory and never actually exercised it; the
-  dual-mode copies assert the real "failed" outcome explicitly instead of the in-memory-only
-  "completed" one.
+- **FIXED — Data Import Service's core "import into any target entity type" feature could not
+  write into a tab it doesn't own** (e.g. `Contact`, owned by user-service) — a real Gateway
+  ownership rejection (see that service's own `ImportJobService._process_job` comment), only
+  ever exercised once the dual-mode copies started running in real mode. Fixed (see
+  `Build_vs_Requirements_Audit.md` section 7.2): `data-import-service` is now allowlisted via a
+  new `also_allow_create_by` mechanism, scoped to `Contact` specifically (the confirmed-needed
+  target), not a blanket ownership bypass. Fixing this exposed two further real bugs in the same
+  path, both fixed alongside it: `write_reconciled_batch` never explicitly set `is_deleted`,
+  leaving new rows invisible to this service's own future duplicate checks; and
+  `DuplicateReconciler`'s exact-match check used full dict equality, which could never match a
+  real Gateway row's full schema against a candidate's narrow mapped-field set. The dual-mode
+  copy of `test_job_completes_synchronously_...` and
+  `test_a_second_submission_of_the_same_row_is_skipped_as_a_duplicate` now assert the same
+  "completed"/duplicate-detected outcome in both modes; the separate cross-service test
+  `test_data_import_reaches_a_terminal_status.py` still exercises the genuine-rejection path, now
+  against `Application` (not yet allowlisted) instead of `Contact`.
 
 ## Notable coverage gaps surfaced while cataloging (worth saying out loud in the demo, not hiding)
 
