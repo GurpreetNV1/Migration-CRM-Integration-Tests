@@ -1,5 +1,4 @@
 import json
-import os
 
 from app.main import app
 from fastapi.testclient import TestClient
@@ -175,26 +174,18 @@ def test_an_admin_identity_still_cannot_update_someone_elses_note() -> None:
 
 
 def test_author_can_delete_their_own_note() -> None:
+    # Used to 503 against the real Gateway (Build_vs_Requirements_Audit.md §7.1):
+    # GatewayNoteRepository.delete() -> gateway.soft_delete("Note", ...), which the real
+    # Gateway's SheetsRepository.soft_delete() rejected since the real Note tab had no
+    # is_deleted column. Fixed by adding is_deleted to TAB_SCHEMAS["Note"] and the matching
+    # header cell on the real Note sheet -- passes identically in both modes now.
     created = _create_note(author_id="STF-000001")
 
     response = client.delete(
         f"/notes/{created['note_id']}", params={"requesting_staff_id": "STF-000001"}
     )
 
-    if os.environ.get("TEST_GATEWAY_MODE", "real") == "real":
-        # Already-documented, deliberately-deferred gap (see
-        # server/gaps-in-services/Pending_Items.md's "Deleting a note 503s against the real
-        # Gateway" and gaps-in-services/01_data_gateway_hard_delete_missing.md): GatewayNoteRepository
-        # .delete() calls gateway.soft_delete("Note", ...), which the in-memory stand-in accepts
-        # unconditionally but the real Gateway's SheetsRepository.soft_delete() rejects with 500
-        # (-> 503 here) since the real Note tab has no is_deleted column yet. The real fix needs a
-        # structural change to the shared production spreadsheet, not just code, so it's out of
-        # scope here -- this assertion documents the known real-mode behavior rather than masking
-        # it as a passing 204 the way the in-memory-only original test correctly does for its own,
-        # always-in-memory context.
-        assert response.status_code == 503
-    else:
-        assert response.status_code == 204
+    assert response.status_code == 204
 
 
 def test_a_different_staff_member_cannot_delete_someone_elses_note() -> None:
