@@ -11,8 +11,8 @@ it, `README.md` in this same folder has that; this file is the "what do I actual
 |---|---|---|
 | `pytest tests/ -v` | 11 real cross-service tests — real subprocesses, real Kafka, real Google Sheets/Drive | 1-7 |
 | `python run_unit_tests.py` | 607 pure unit tests, in-memory, fast | 8 |
-| `python run_service_integration_tests.py` | 210 per-service tests, reaching into `server/` (real HTTP routes, always in-memory Gateway) | 8 |
-| `python run_local_integration_tests.py` | The same 210 tests, copied into this repo, **dual-mode**: real Gateway/real Sheets by default, `--gateway-mode=memory` for fast/in-memory | 8.5 |
+| `python run_service_integration_tests.py` | 221 per-service tests, reaching into `server/` (real HTTP routes, always in-memory Gateway) | 8 |
+| `python run_local_integration_tests.py` | The same 221 tests, copied into this repo, **dual-mode**: real Gateway/real Sheets by default, `--gateway-mode=memory` for fast/in-memory | 8.5 |
 
 The cross-service suite (sections 1-7) is the one that needs Docker/Kafka/real credentials and
 takes ~7 minutes; section 8's two commands need none of that and take under a minute combined.
@@ -277,14 +277,14 @@ UUID-suffixed (e.g. `VISA-b52c13f7`), so it's easy to spot as new.
 
 ---
 
-## 8. Running every service's own tests (607 unit + 210 integration, fast)
+## 8. Running every service's own tests (607 unit + 221 integration, fast)
 
 Separate from the 11 real cross-service tests above, every built service already has its own
 test suite split into two subfolders under `server/services/<service>/tests/`:
 
 - **`tests/unit/`** (607 tests total) — one class/function at a time, everything else mocked. No
   HTTP, no Gateway of any kind.
-- **`tests/integration/`** (210 tests total, across all 15 built-or-partial services including
+- **`tests/integration/`** (221 tests total, across all 15 built-or-partial services including
   `05_email_draft_service`'s single health check) — hits the real FastAPI routes via `TestClient`,
   but in one process against an **in-memory** Data Gateway stand-in, not real Sheets.
 
@@ -358,7 +358,7 @@ own `.venv` when one exists (falling back to the global interpreter otherwise, s
 `conftest.py` uses for the cross-service suite).
 
 **Where to find what each of these 817 tests actually does:**
-- **The 210 integration tests** (this section's `run_service_integration_tests.py`) — one line
+- **The 221 integration tests** (this section's `run_service_integration_tests.py`) — one line
   per test, all in one place: `catalog/integration_tests_index.md`.
 - **The 607 unit tests** (this section's `run_unit_tests.py`) — no single consolidated index for
   these (the largest, most narrow tier); full 50-60-word detail lives in each service's own
@@ -368,11 +368,11 @@ own `.venv` when one exists (falling back to the global interpreter otherwise, s
 
 ---
 
-## 8.5. Running the 210 per-service integration tests from *this* repo, dual-mode
+## 8.5. Running the 221 per-service integration tests from *this* repo, dual-mode
 
 Section 8's `run_service_integration_tests.py` reaches into `server/services/<n>/tests/integration/`
 remotely — it never contains those tests. `run_local_integration_tests.py` is different: the same
-210 test files are also physically copied into this repo, under
+221 test files are also physically copied into this repo, under
 `tests/service_integration/<service>/` (the originals in `server/` are untouched — nothing there
 was removed or edited, and section 8's command still works exactly as it always has). The copies
 add one new capability the originals don't have: **choosing whether they run in-memory or against

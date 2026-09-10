@@ -13,7 +13,7 @@ of what's here and why.
 
 ## Three kinds of testing here
 
-| | Unit tests (607) | Per-service integration tests (210) | Cross-service tests (11, growing) |
+| | Unit tests (607) | Per-service integration tests (221) | Cross-service tests (11, growing) |
 |---|---|---|---|
 | Command | `python run_unit_tests.py` | `python run_service_integration_tests.py` | `pytest tests/ -v` |
 | What it starts | Nothing — one class/function at a time, everything else mocked | Nothing — FastAPI's `TestClient`, in-process, against that service's in-memory Gateway stand-in | Real `uvicorn` subprocesses, real Kafka, real Google Sheets/Drive |
@@ -22,7 +22,7 @@ of what's here and why.
 | Lives in | `server/services/<service>/tests/unit/` | `server/services/<service>/tests/integration/` | this repo's own `tests/` |
 | Full index | `catalog/README.md` | `catalog/README.md` | `catalog/README.md`'s "True cross-service tests" section |
 
-**These 210 per-service integration tests also physically live in this repo now**, under
+**These 221 per-service integration tests also physically live in this repo now**, under
 `tests/service_integration/<service>/` — verbatim copies of the files in
 `server/services/<n>/tests/integration/` (the originals there are untouched and
 `run_service_integration_tests.py` above keeps working exactly as it always has, always in-memory).
@@ -68,7 +68,7 @@ service's own `.venv` if it has one. Run one service only with `--service task` 
 ## Planned additions
 
 Two deliberately small, targeted additions to close the specific gap the in-memory tiers can't
-cover, without touching the 210/607 split above or the quota budget it depends on:
+cover, without touching the 221/607 split above or the quota budget it depends on:
 - **~1 real-Sheets schema/coercion test per service (~15 new)** — checks that service's actual
   assumed tab schema and field types still match the live sheet, the exact class of bug (header
   drift, boolean-as-string coercion) that's bitten this project before.

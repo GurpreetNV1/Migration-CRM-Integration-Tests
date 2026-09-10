@@ -6,18 +6,18 @@ demo: use this as narration/talking points rather than reading code live.
 
 To actually run any of this yourself rather than just read about it, see
 `../TESTING_GUIDE.md` — `python run_unit_tests.py` (607 tests) and
-`python run_service_integration_tests.py` (210 tests) together run every per-service test below,
+`python run_service_integration_tests.py` (221 tests) together run every per-service test below,
 each well under a minute, in-memory; `pytest tests/ -v` runs the 11 true cross-service tests (~7
 minutes, real Sheets/Drive/Kafka).
 
-**828 tests documented total** — 817 existing per-service tests (already built, run via
+**839 tests documented total** — 828 existing per-service tests (already built, run via
 `TestClient` against an in-memory Gateway stand-in, fully isolated from other services) plus the
 11 true cross-service tests below (real, separate OS processes, real HTTP/Kafka/Sheets).
 
-Of those 817, 210 are per-service **integration** tests (still in-memory, but exercise a real HTTP
+Of those 828, 221 are per-service **integration** tests (still in-memory, but exercise a real HTTP
 route end-to-end within that one service) — see
 **[integration_tests_index.md](integration_tests_index.md)** for a consolidated, at-a-glance
-table of all 210, one line per test, same style as the cross-service table below. The remaining
+table of all 221, one line per test, same style as the cross-service table below. The remaining
 607 unit tests have no equivalent single-page index — their full detail lives only in each
 service's own `catalog/<n>.md` file, linked in the table further down.
 
@@ -80,7 +80,7 @@ Not yet built (no tests to catalog): Email Drafting logic itself (Email Draft Se
 health check so far — see its own catalog entry), Reports Service, Client Portal Service,
 Regional/Office Management Service, OTP Forwarding Module.
 
-**These 210 integration tests also physically live in this repo now**, under
+**These 221 integration tests also physically live in this repo now**, under
 `../tests/service_integration/<service>/` — verbatim copies of the same files listed in each
 catalog above, runnable **dual-mode** (real Gateway/real Sheets by default, or fast in-memory)
 via `python run_local_integration_tests.py` — see `../README.md`/`../TESTING_GUIDE.md` section
