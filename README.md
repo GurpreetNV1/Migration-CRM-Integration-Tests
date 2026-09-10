@@ -1,5 +1,10 @@
 # Integration Tests — Cross-Service
 
+**New to this project?** Start with `NEW_DEVELOPER_SETUP.md` instead of this file — it's a
+linear, do-it-in-order guide from a blank machine (prerequisites, cloning all three repos,
+Kafka, per-service Python environments) through to your first passing test run. Come back here
+once that's done for the full picture of what's actually being tested and why.
+
 Real, separate service processes talking to each other for real — the real Data Gateway Service,
 real local Kafka, and real business services, each its own OS process, communicating over real
 HTTP/Kafka. This is **not** the same thing as each service's own `tests/integration/` (those use
@@ -13,7 +18,7 @@ of what's here and why.
 
 ## Three kinds of testing here
 
-| | Unit tests (607) | Per-service integration tests (210) | Cross-service tests (11, growing) |
+| | Unit tests (827) | Per-service integration tests (245) | Cross-service tests (11, growing) |
 |---|---|---|---|
 | Command | `python run_unit_tests.py` | `python run_service_integration_tests.py` | `pytest tests/ -v` |
 | What it starts | Nothing — one class/function at a time, everything else mocked | Nothing — FastAPI's `TestClient`, in-process, against that service's in-memory Gateway stand-in | Real `uvicorn` subprocesses, real Kafka, real Google Sheets/Drive |
@@ -22,7 +27,7 @@ of what's here and why.
 | Lives in | `server/services/<service>/tests/unit/` | `server/services/<service>/tests/integration/` | this repo's own `tests/` |
 | Full index | `catalog/README.md` | `catalog/README.md` | `catalog/README.md`'s "True cross-service tests" section |
 
-**These 210 per-service integration tests also physically live in this repo now**, under
+**These 245 per-service integration tests also physically live in this repo now**, under
 `tests/service_integration/<service>/` — verbatim copies of the files in
 `server/services/<n>/tests/integration/` (the originals there are untouched and
 `run_service_integration_tests.py` above keeps working exactly as it always has, always in-memory).
@@ -47,11 +52,11 @@ Gateway backend is behind it.
 
 **Why the first two tiers use an in-memory Gateway stand-in instead of real Google Sheets:** the
 Google account backing this project has a *permanent* ceiling of 60 Sheets/Drive API requests per
-minute (see `server/gaps-in-services/Pending_Items.md`) — a hard cap, not a temporary block. 817
+minute (see `server/gaps-in-services/Pending_Items.md`) — a hard cap, not a temporary block. 1072
 tests running against a real Gateway would mean hundreds to thousands of real API calls just for
 that tier, blowing well past that ceiling before even reaching the 11 cross-service tests, and
 turning a sub-minute run into one measured in tens of minutes, gated on quota backoff. The
-in-memory stand-in has correct read/write/query semantics (it's what most of these 817 tests
+in-memory stand-in has correct read/write/query semantics (it's what most of these 1072 tests
 actually exercise), so it's the right tool for proving business logic; it's specifically real
 Gateway *behavior* (merge semantics, boolean coercion, schema/column drift, concurrent-access
 thread-safety) that it can't catch — which is exactly what the 11 cross-service tests, plus a
@@ -68,7 +73,7 @@ service's own `.venv` if it has one. Run one service only with `--service task` 
 ## Planned additions
 
 Two deliberately small, targeted additions to close the specific gap the in-memory tiers can't
-cover, without touching the 210/607 split above or the quota budget it depends on:
+cover, without touching the 245/827 split above or the quota budget it depends on:
 - **~1 real-Sheets schema/coercion test per service (~15 new)** — checks that service's actual
   assumed tab schema and field types still match the live sheet, the exact class of bug (header
   drift, boolean-as-string coercion) that's bitten this project before.
@@ -124,7 +129,7 @@ python -m pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-For the other 817 tests (every built service's own suite, fast, in-memory), use
+For the other 1072 tests (every built service's own suite, fast, in-memory), use
 `python run_unit_tests.py` / `python run_service_integration_tests.py` instead — see "Three kinds
 of testing" above.
 

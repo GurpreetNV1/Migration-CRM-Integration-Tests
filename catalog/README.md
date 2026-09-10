@@ -5,20 +5,25 @@ tests in `../tests/`, each with a 50-60 word plain-English summary of what it pr
 demo: use this as narration/talking points rather than reading code live.
 
 To actually run any of this yourself rather than just read about it, see
-`../TESTING_GUIDE.md` — `python run_unit_tests.py` (607 tests) and
-`python run_service_integration_tests.py` (210 tests) together run every per-service test below,
+`../TESTING_GUIDE.md` — `python run_unit_tests.py` (827 tests) and
+`python run_service_integration_tests.py` (245 tests) together run every per-service test below,
 each well under a minute, in-memory; `pytest tests/ -v` runs the 11 true cross-service tests (~7
 minutes, real Sheets/Drive/Kafka).
 
-**828 tests documented total** — 817 existing per-service tests (already built, run via
+**1,083 tests documented total** — 1,072 existing per-service tests (already built, run via
 `TestClient` against an in-memory Gateway stand-in, fully isolated from other services) plus the
-11 true cross-service tests below (real, separate OS processes, real HTTP/Kafka/Sheets).
+11 true cross-service tests below (real, separate OS processes, real HTTP/Kafka/Sheets). These
+per-service counts are the live, freshly-measured totals from actually running
+`run_unit_tests.py`/`run_service_integration_tests.py` — **the per-service tables below and in
+`integration_tests_index.md` have not all been reconciled against this count yet** (features
+land faster than this catalog gets hand-updated); treat a live test run as the source of truth
+over any specific row-count claim here, and feel free to add missing entries as you notice them.
 
-Of those 817, 210 are per-service **integration** tests (still in-memory, but exercise a real HTTP
-route end-to-end within that one service) — see
+Of those 1,072, 245 are per-service **integration** tests (still in-memory, but exercise a real
+HTTP route end-to-end within that one service) — see
 **[integration_tests_index.md](integration_tests_index.md)** for a consolidated, at-a-glance
-table of all 210, one line per test, same style as the cross-service table below. The remaining
-607 unit tests have no equivalent single-page index — their full detail lives only in each
+table of the ones catalogued so far, same style as the cross-service table below. The remaining
+827 unit tests have no equivalent single-page index — their full detail lives only in each
 service's own `catalog/<n>.md` file, linked in the table further down.
 
 ## True cross-service tests (this repo's own `../tests/`)
@@ -56,7 +61,8 @@ this suite exists at all, not just what it covers:
 - `Data_Import_Job`'s real Gateway schema was missing 4 columns the repository always wrote,
   silently dropping every failed job's recorded error reason.
 
-## Per-service catalogs (existing tests, 817 total)
+## Per-service catalogs (existing tests, 1,072 total — see note above: the per-row counts
+below are not all reconciled against that live total yet)
 
 | Service | Catalog | Tests |
 |---|---|---|
@@ -80,7 +86,7 @@ Not yet built (no tests to catalog): Email Drafting logic itself (Email Draft Se
 health check so far — see its own catalog entry), Reports Service, Client Portal Service,
 Regional/Office Management Service, OTP Forwarding Module.
 
-**These 210 integration tests also physically live in this repo now**, under
+**These integration tests also physically live in this repo now**, under
 `../tests/service_integration/<service>/` — verbatim copies of the same files listed in each
 catalog above, runnable **dual-mode** (real Gateway/real Sheets by default, or fast in-memory)
 via `python run_local_integration_tests.py` — see `../README.md`/`../TESTING_GUIDE.md` section

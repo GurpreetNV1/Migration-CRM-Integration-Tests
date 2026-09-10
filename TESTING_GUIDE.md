@@ -10,9 +10,9 @@ it, `README.md` in this same folder has that; this file is the "what do I actual
 | Command | What it runs | Section |
 |---|---|---|
 | `pytest tests/ -v` | 11 real cross-service tests — real subprocesses, real Kafka, real Google Sheets/Drive | 1-7 |
-| `python run_unit_tests.py` | 607 pure unit tests, in-memory, fast | 8 |
-| `python run_service_integration_tests.py` | 210 per-service tests, reaching into `server/` (real HTTP routes, always in-memory Gateway) | 8 |
-| `python run_local_integration_tests.py` | The same 210 tests, copied into this repo, **dual-mode**: real Gateway/real Sheets by default, `--gateway-mode=memory` for fast/in-memory | 8.5 |
+| `python run_unit_tests.py` | 827 pure unit tests, in-memory, fast | 8 |
+| `python run_service_integration_tests.py` | 245 per-service tests, reaching into `server/` (real HTTP routes, always in-memory Gateway) | 8 |
+| `python run_local_integration_tests.py` | The same 245 tests, copied into this repo, **dual-mode**: real Gateway/real Sheets by default, `--gateway-mode=memory` for fast/in-memory | 8.5 |
 
 The cross-service suite (sections 1-7) is the one that needs Docker/Kafka/real credentials and
 takes ~7 minutes; section 8's two commands need none of that and take under a minute combined.
@@ -159,7 +159,7 @@ but it does mean:
 ## 3. Run the cross-service suite (this repo's 11 tests)
 
 This is the one that proves the *system* wired together — real subprocesses, real Kafka, real
-Sheets. If you instead want the 817 fast per-service tests (in-memory, ~1-1.5 minutes total), skip to
+Sheets. If you instead want the 1072 fast per-service tests (in-memory, ~1-1.5 minutes total), skip to
 section 8.
 
 From the `integration-tests` folder:
@@ -277,20 +277,20 @@ UUID-suffixed (e.g. `VISA-b52c13f7`), so it's easy to spot as new.
 
 ---
 
-## 8. Running every service's own tests (607 unit + 210 integration, fast)
+## 8. Running every service's own tests (827 unit + 245 integration, fast)
 
 Separate from the 11 real cross-service tests above, every built service already has its own
 test suite split into two subfolders under `server/services/<service>/tests/`:
 
-- **`tests/unit/`** (607 tests total) — one class/function at a time, everything else mocked. No
+- **`tests/unit/`** (827 tests total) — one class/function at a time, everything else mocked. No
   HTTP, no Gateway of any kind.
-- **`tests/integration/`** (210 tests total, across all 15 built-or-partial services including
+- **`tests/integration/`** (245 tests total, across all 15 built-or-partial services including
   `05_email_draft_service`'s single health check) — hits the real FastAPI routes via `TestClient`,
   but in one process against an **in-memory** Data Gateway stand-in, not real Sheets.
 
 **Why in-memory and not real Sheets for these two tiers:** the Google account behind this project
 has a *permanent* ceiling of 60 Sheets/Drive requests per minute (see
-`server/gaps-in-services/Pending_Items.md`) — not a temporary block, a hard cap. These 817 tests
+`server/gaps-in-services/Pending_Items.md`) — not a temporary block, a hard cap. These 1072 tests
 running against a real Gateway would mean hundreds to thousands of real API calls for this tier
 alone, blowing past that ceiling before even reaching the 11 cross-service tests below, and
 turning a sub-minute run into tens of minutes gated on quota backoff. The in-memory stand-in has
@@ -326,7 +326,7 @@ still checkable later even if you weren't watching the terminal when it finished
 `run_service_integration_tests.py`. The path is printed at the end of every run.
 
 The log file has more detail than the console on purpose: the console only ever shows one line
-per service (so a passing run of 817 tests doesn't scroll past in a wall of text), but the log
+per service (so a passing run of 1072 tests doesn't scroll past in a wall of text), but the log
 file always contains every single individual test's name and PASSED/FAILED result — not just the
 aggregate count — for every service, whether it passed or failed. So if you ever need to confirm
 "did test X specifically run, and did it pass," the log file has that even when the console
@@ -357,10 +357,10 @@ service's own already-existing `pytest tests/unit/` or `tests/integration/`, usi
 own `.venv` when one exists (falling back to the global interpreter otherwise, same rule
 `conftest.py` uses for the cross-service suite).
 
-**Where to find what each of these 817 tests actually does:**
-- **The 210 integration tests** (this section's `run_service_integration_tests.py`) — one line
+**Where to find what each of these 1072 tests actually does:**
+- **The 245 integration tests** (this section's `run_service_integration_tests.py`) — one line
   per test, all in one place: `catalog/integration_tests_index.md`.
-- **The 607 unit tests** (this section's `run_unit_tests.py`) — no single consolidated index for
+- **The 827 unit tests** (this section's `run_unit_tests.py`) — no single consolidated index for
   these (the largest, most narrow tier); full 50-60-word detail lives in each service's own
   `catalog/<n>.md` file, under its `## Unit tests` section.
 - Every per-service `catalog/<n>.md` file also has the full 50-60-word detail for its own
@@ -368,11 +368,11 @@ own `.venv` when one exists (falling back to the global interpreter otherwise, s
 
 ---
 
-## 8.5. Running the 210 per-service integration tests from *this* repo, dual-mode
+## 8.5. Running the 245 per-service integration tests from *this* repo, dual-mode
 
 Section 8's `run_service_integration_tests.py` reaches into `server/services/<n>/tests/integration/`
 remotely — it never contains those tests. `run_local_integration_tests.py` is different: the same
-210 test files are also physically copied into this repo, under
+245 test files are also physically copied into this repo, under
 `tests/service_integration/<service>/` (the originals in `server/` are untouched — nothing there
 was removed or edited, and section 8's command still works exactly as it always has). The copies
 add one new capability the originals don't have: **choosing whether they run in-memory or against
@@ -431,7 +431,7 @@ printed at the end of the run.
 ## 9. Planned additions (not built yet)
 
 Two small, deliberately narrow additions planned to close the one real gap the in-memory tiers
-above can't cover, without touching their 817-test/quota-free budget:
+above can't cover, without touching their 1072-test/quota-free budget:
 
 - **~1 real-Sheets schema/coercion test per service (~15 new)** — checks that service's actual
   assumed tab schema and field types still match the live sheet. This is the exact class of bug
