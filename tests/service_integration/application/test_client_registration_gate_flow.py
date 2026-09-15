@@ -110,7 +110,7 @@ def test_full_gate_flow_advances_application_to_stage_two() -> None:
 
     final_application = client.get(f"/applications/{application_id}").json()
     assert final_application["stage"] == 2
-    assert final_application["invoice_created"] is True
+    assert final_application["invoice_paid"] is True
 
     final_gate = client.get(f"/applications/{application_id}/registration/gate-status").json()
     assert final_gate["gate_satisfied"] is True
@@ -251,9 +251,11 @@ def test_valid_coupon_applies_discount_and_gets_redeemed() -> None:
             "id": "CPN-TEST-1",
             "coupon_id": "CPN-TEST-1",
             "code": "SAVE10",
+            "type": "discount",
             "discount_type": "percentage",
             "discount_value": 10,
             "status": "active",
+            "issued_at": "2026-01-01T00:00:00+00:00",
         },
     )
 
@@ -265,7 +267,10 @@ def test_valid_coupon_applies_discount_and_gets_redeemed() -> None:
     assert response.status_code == 201
     body = response.json()
     assert body["discount_amount"] == 50.0
-    assert body["final_amount"] == 450.0
+    # 500 - 50 discount = 450 subtotal; +10% default tax rate = 45; final = 495.
+    assert body["tax_rate"] == 0.10
+    assert body["tax_amount"] == 45.0
+    assert body["final_amount"] == 495.0
 
     coupon_row = app.state.gateway.get_by_id("Discount_Coupon", "CPN-TEST-1")
     assert coupon_row["status"] == "redeemed"

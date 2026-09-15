@@ -15,7 +15,7 @@ def _seed_schema(visa_type: str = "Student", allowed_fields: list[str] | None = 
         {
             "id": visa_type,
             "visa_type": visa_type,
-            "allowed_dynamic_fields_json": json.dumps(allowed_fields or ["course_name"]),
+            "allowed_dynamic_fields_json": json.dumps(dict.fromkeys(allowed_fields or ["course_name"])),
         },
     )
 

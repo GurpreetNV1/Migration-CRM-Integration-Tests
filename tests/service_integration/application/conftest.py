@@ -38,7 +38,25 @@ if _mode == "real":
 
     _http_client_module.MAX_ATTEMPTS = 3
     _http_client_module.BACKOFF_BASE_SECONDS = 70
-    build_app_state(app, Settings(data_gateway_mode="http", data_gateway_url=_gateway_url))
+    # Found live, 2026-09-15: this service's visa-type schema/RFI-type/compliance-checklist
+    # validation (AdminModule*Repository) makes a real HTTP call to Admin Module -- without this,
+    # admin_module_mode stays at Settings' bare "memory" default and every real POST /applications
+    # fails with a clean-but-wrong "unknown visa type" 422. run_local_integration_tests.py starts
+    # a shared real Admin Module subprocess and sets this env var whenever "application" is one of
+    # the targets in --gateway-mode=real.
+    _admin_module_url = os.environ.get("TEST_ADMIN_MODULE_URL")
+    build_app_state(
+        app,
+        Settings(
+            data_gateway_mode="http",
+            data_gateway_url=_gateway_url,
+            **(
+                {"admin_module_mode": "http", "admin_module_url": _admin_module_url}
+                if _admin_module_url
+                else {}
+            ),
+        ),
+    )
     from _foreign_tab_gateway import ForeignTabAwareGatewayClient
 
     app.state.gateway = ForeignTabAwareGatewayClient(app.state.gateway, _gateway_url)

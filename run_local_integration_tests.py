@@ -113,6 +113,7 @@ def main() -> int:
         return 1
 
     gateway_gen = None
+    admin_gen = None
     env_overrides = {"TEST_GATEWAY_MODE": args.gateway_mode}
     # The Gateway service's own copied tests build their own in-process app directly via
     # load_settings() (see tests/service_integration/gateway/conftest.py) -- they never read
@@ -133,6 +134,46 @@ def main() -> int:
         time.sleep(root_conftest.GATEWAY_STARTUP_QUOTA_PACING_SECONDS)
         print(f"Real Gateway up at {gateway_url}")
         env_overrides["TEST_GATEWAY_URL"] = gateway_url
+
+        # user and application are the only two services whose real code makes a genuine HTTP
+        # call to Admin Module (ConfigDrivenRatingStrategy/AdminModuleContactConfigProvider,
+        # AdminModuleApplicationTypeSchemaRepository) instead of relying on an in-memory stand-in
+        # seeded by the test itself -- found live, 2026-09-15: without a real Admin Module to call,
+        # both fell back to Settings' bare admin_module_mode="memory" default (their conftest.py
+        # only ever overrides data_gateway_mode/url, never admin_module_mode/url), so every
+        # config-driven validation (rating ladder, visa-type schema) failed with a clean but wrong
+        # "not available" 422 -- not a connection error, which is why it looked like a real
+        # validation bug rather than a missing dependency. Starting one real, shared Admin Module
+        # subprocess here (same pattern as the Gateway above) fixes both without duplicating a
+        # process per test file. EVENT_PUBLISHER_MODE=memory here deliberately -- Admin Module's
+        # own .env defaults to EVENT_PUBLISHER_MODE=kafka, which hangs ~30s then crashes this
+        # subprocess's startup when no real broker is running; this is a config-lookup dependency
+        # only, its own event-publishing behavior is irrelevant to what user/application need from it.
+        if {"user", "application"} & set(targets):
+            print("Starting the real Admin Module Service (needed by user/application for real config lookups)...")
+            admin_gen = root_conftest.start_service(
+                "admin",
+                root_conftest.PORTS["admin"],
+                {
+                    "DATA_GATEWAY_MODE": "http",
+                    "DATA_GATEWAY_URL": gateway_url,
+                    "EVENT_PUBLISHER_MODE": "memory",
+                    # CachedConfigDecorator's default 60s TTL is fine in production, where every
+                    # write to a config tab goes through Admin Module's own save()/update() (which
+                    # invalidates its own cache) -- but these copied tests seed config rows (e.g.
+                    # Discount_Coupon) via a raw cross-service Gateway write (_foreign_tab_gateway.py),
+                    # bypassing that invalidation entirely. An earlier lookup in this same subprocess
+                    # (e.g. test_invalid_coupon_code_is_rejected's own coupon-code check) can warm
+                    # the cache before the seed happens, then serve that stale, pre-seed result for
+                    # up to 60s -- found live, 2026-09-15, as a same-run false negative on
+                    # test_valid_coupon_applies_discount_and_gets_redeemed. Near-zero TTL here only,
+                    # for this test-only subprocess.
+                    "CONFIG_CACHE_TTL_SECONDS": "0",
+                },
+            )
+            admin_url = next(admin_gen)
+            print(f"Real Admin Module up at {admin_url}")
+            env_overrides["TEST_ADMIN_MODULE_URL"] = admin_url
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOG_DIR / f"{time.strftime('%Y%m%d_%H%M%S')}_{args.gateway_mode}.log"
@@ -165,6 +206,8 @@ def main() -> int:
                     time.sleep(3)
                 results.append((name, ok))
     finally:
+        if admin_gen is not None:
+            next(admin_gen, None)
         if gateway_gen is not None:
             next(gateway_gen, None)
 
