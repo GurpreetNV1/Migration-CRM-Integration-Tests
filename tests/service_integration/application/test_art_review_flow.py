@@ -1,20 +1,31 @@
 import json
 
 from app.main import app
+from app.models import ContactRef, StaffRef
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
 
-def _seed_application(visa_type: str) -> str:
+def _seed_application(
+    visa_type: str, contact_id: str = "CT-300", assigned_staff_id: str | None = "STF-1"
+) -> str:
     app.state.gateway.create(
         "Application_Type_Field_Schemas",
         {"id": visa_type, "visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps([])},
     )
+    app.state.user_service_client.seed(
+        ContactRef(
+            contact_id=contact_id,
+            full_name="Test Contact",
+            primary_email="contact@example.com",
+            assigned_staff_id=assigned_staff_id,
+        )
+    )
     response = client.post(
         "/applications",
         json={
-            "primary_applicant_contact_id": "CT-300",
+            "primary_applicant_contact_id": contact_id,
             "visa_type": visa_type,
             "dynamic_fields": {},
         },
@@ -32,8 +43,12 @@ def test_initiate_and_decide_art_review() -> None:
     review_id = initiated.json()["art_review_id"]
     assert initiated.json()["decision"] is None
 
+    # The assigned consultant on the Application's Contact (seeded above as "STF-1") may record
+    # the decision -- FR-3.4 / PENDING_ITEMS_MASTER_LIST.md section 1 item 7.
     decided = client.post(
-        f"/art-reviews/{review_id}/decision", json={"decision": "Refused", "appeal_initiated": True}
+        f"/art-reviews/{review_id}/decision",
+        json={"decision": "Refused", "appeal_initiated": True},
+        headers={"X-Caller-Id": "STF-1"},
     )
     assert decided.status_code == 200
     body = decided.json()
@@ -42,8 +57,76 @@ def test_initiate_and_decide_art_review() -> None:
     assert body["decided_at"] is not None
 
 
+def test_admin_can_decide_art_review_not_assigned_to_them() -> None:
+    application_id = _seed_application("ART-Visa-Admin", contact_id="CT-301")
+    app.state.user_service_client.seed_staff(StaffRef(staff_id="STF-9", role_tier="Admin"))
+
+    initiated = client.post(
+        f"/applications/{application_id}/art-reviews", json={"decision_maker_role": "Consultant"}
+    )
+    review_id = initiated.json()["art_review_id"]
+
+    decided = client.post(
+        f"/art-reviews/{review_id}/decision",
+        json={"decision": "Refused", "appeal_initiated": False},
+        headers={"X-Caller-Id": "STF-9"},
+    )
+    assert decided.status_code == 200
+    assert decided.json()["decision"] == "Refused"
+
+
+def test_director_can_decide_art_review_not_assigned_to_them() -> None:
+    application_id = _seed_application("ART-Visa-Director", contact_id="CT-302")
+    app.state.user_service_client.seed_staff(StaffRef(staff_id="STF-8", role_tier="Director"))
+
+    initiated = client.post(
+        f"/applications/{application_id}/art-reviews", json={"decision_maker_role": "Consultant"}
+    )
+    review_id = initiated.json()["art_review_id"]
+
+    decided = client.post(
+        f"/art-reviews/{review_id}/decision",
+        json={"decision": "Refused", "appeal_initiated": False},
+        headers={"X-Caller-Id": "STF-8"},
+    )
+    assert decided.status_code == 200
+    assert decided.json()["decision"] == "Refused"
+
+
+def test_unrelated_staff_member_cannot_decide_art_review() -> None:
+    application_id = _seed_application("ART-Visa-Unrelated", contact_id="CT-303")
+    app.state.user_service_client.seed_staff(StaffRef(staff_id="STF-2", role_tier="Consultant"))
+
+    initiated = client.post(
+        f"/applications/{application_id}/art-reviews", json={"decision_maker_role": "Consultant"}
+    )
+    review_id = initiated.json()["art_review_id"]
+
+    decided = client.post(
+        f"/art-reviews/{review_id}/decision",
+        json={"decision": "Refused", "appeal_initiated": False},
+        headers={"X-Caller-Id": "STF-2"},
+    )
+    assert decided.status_code == 403
+
+
+def test_decision_without_caller_id_is_rejected() -> None:
+    application_id = _seed_application("ART-Visa-NoCaller", contact_id="CT-304")
+
+    initiated = client.post(
+        f"/applications/{application_id}/art-reviews", json={"decision_maker_role": "Consultant"}
+    )
+    review_id = initiated.json()["art_review_id"]
+
+    decided = client.post(
+        f"/art-reviews/{review_id}/decision",
+        json={"decision": "Refused", "appeal_initiated": False},
+    )
+    assert decided.status_code == 403
+
+
 def test_list_reviews_for_application() -> None:
-    application_id = _seed_application("ART-Visa-2")
+    application_id = _seed_application("ART-Visa-2", contact_id="CT-305")
     client.post(
         f"/applications/{application_id}/art-reviews", json={"decision_maker_role": "Admin"}
     )
