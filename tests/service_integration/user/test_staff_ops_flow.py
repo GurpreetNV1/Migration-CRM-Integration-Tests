@@ -28,18 +28,30 @@ def _seed_staff_once() -> None:
                 "name": "Approver",
                 "email": "approver@example.com",
                 "office_id": "OFF-000001",
-                "role_tier": "Director",
+                # "Director" was fully consolidated into "Owner" during this project's RBAC
+                # simplification (New_Integrations_2026-09-16.md section 5).
+                "role_tier": "Owner",
                 "active": True,
             },
         )
-    if gateway.get_by_id("Role_Hierarchy", "Consultant") is None:
-        gateway.create(
-            "Role_Hierarchy", {"id": "Consultant", "role_tier": "Consultant", "hierarchy_level": 1}
-        )
-    if gateway.get_by_id("Role_Hierarchy", "Director") is None:
-        gateway.create(
-            "Role_Hierarchy", {"id": "Director", "role_tier": "Director", "hierarchy_level": 3}
-        )
+    # AdminModuleRoleHierarchyProvider (what RoleHierarchyApproverResolver actually calls) always
+    # reads through app.state.admin_module_client, not app.state.gateway directly -- found live
+    # 2026-09-17: seeding Role_Hierarchy straight into the gateway here was a no-op as far as
+    # ApproverResolver's own get_hierarchy_level lookups are concerned in memory mode, so every
+    # leave-request test 404'd with "No approver available".
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_role_hierarchy"):
+        admin_module_client.seed_role_hierarchy("Consultant", 1)
+        admin_module_client.seed_role_hierarchy("Owner", 3)
+    else:
+        if gateway.get_by_id("Role_Hierarchy", "Consultant") is None:
+            gateway.create(
+                "Role_Hierarchy", {"role_tier": "Consultant", "hierarchy_level": 1}
+            )
+        if gateway.get_by_id("Role_Hierarchy", "Owner") is None:
+            gateway.create(
+                "Role_Hierarchy", {"role_tier": "Owner", "hierarchy_level": 3}
+            )
 
 
 _seed_staff_once()
@@ -70,7 +82,8 @@ def test_get_attendance_range() -> None:
     )
 
     response = client.get(
-        "/staff/STF-000001/attendance", params={"start": "2026-09-02", "end": "2026-09-02"}
+        "/staff/STF-000001/attendance",
+        params={"start": "2026-09-02", "end": "2026-09-02"},
     )
 
     assert response.status_code == 200
@@ -80,7 +93,11 @@ def test_get_attendance_range() -> None:
 def test_submit_leave_request_routes_to_the_office_director() -> None:
     response = client.post(
         "/leave-requests",
-        json={"staff_id": "STF-000001", "start_date": "2026-09-10", "end_date": "2026-09-12"},
+        json={
+            "staff_id": "STF-000001",
+            "start_date": "2026-09-10",
+            "end_date": "2026-09-12",
+        },
     )
 
     assert response.status_code == 201
@@ -92,7 +109,11 @@ def test_submit_leave_request_routes_to_the_office_director() -> None:
 def test_submit_leave_request_with_bad_date_range_returns_422() -> None:
     response = client.post(
         "/leave-requests",
-        json={"staff_id": "STF-000001", "start_date": "2026-09-12", "end_date": "2026-09-10"},
+        json={
+            "staff_id": "STF-000001",
+            "start_date": "2026-09-12",
+            "end_date": "2026-09-10",
+        },
     )
     assert response.status_code == 422
 
@@ -100,7 +121,11 @@ def test_submit_leave_request_with_bad_date_range_returns_422() -> None:
 def test_decide_leave_request() -> None:
     submitted = client.post(
         "/leave-requests",
-        json={"staff_id": "STF-000001", "start_date": "2026-09-15", "end_date": "2026-09-16"},
+        json={
+            "staff_id": "STF-000001",
+            "start_date": "2026-09-15",
+            "end_date": "2026-09-16",
+        },
     ).json()
 
     response = client.patch(

@@ -6,11 +6,26 @@ from fastapi.testclient import TestClient
 client = TestClient(app)
 
 
-def _seed_application(visa_type: str) -> str:
+def _seed_schema(visa_type: str) -> None:
+    # AdminModuleApplicationTypeSchemaRepository always reads through app.state.admin_module_client,
+    # not app.state.gateway directly -- see application/conftest.py's module-level comment.
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_application_type_schema"):
+        admin_module_client.seed_application_type_schema(visa_type, {})
+        return
+    if (
+        app.state.gateway.get_by_id("Application_Type_Field_Schemas", visa_type)
+        is not None
+    ):
+        return
     app.state.gateway.create(
         "Application_Type_Field_Schemas",
-        {"id": visa_type, "visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps([])},
+        {"visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps({})},
     )
+
+
+def _seed_application(visa_type: str) -> str:
+    _seed_schema(visa_type)
     response = client.post(
         "/applications",
         json={
@@ -31,29 +46,37 @@ def _rfi_payload(rfi_type: str) -> dict:
 
 
 def _seed_rfi_type(rfi_type_key: str = "S56") -> None:
-    app.state.gateway.create(
-        "RFI_Type_Config",
-        {
-            "id": rfi_type_key,
-            "rfi_type_key": rfi_type_key,
-            "label": "Section 56",
-            "active": True,
-            "document_type_key": None,
-        },
-    )
+    # AdminModuleTypeConfigRepository always reads through app.state.admin_module_client, not
+    # app.state.gateway directly.
+    fields = {
+        "rfi_type_key": rfi_type_key,
+        "label": "Section 56",
+        "active": True,
+        "document_type_key": None,
+    }
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_rfi_type"):
+        admin_module_client.seed_rfi_type(fields)
+        return
+    if app.state.gateway.get_by_id("RFI_Type_Config", rfi_type_key) is not None:
+        return
+    app.state.gateway.create("RFI_Type_Config", fields)
 
 
 def _seed_notification_type(key: str = "bridging_visa") -> None:
-    app.state.gateway.create(
-        "Notification_Type_Config",
-        {
-            "id": key,
-            "notification_type_key": key,
-            "label": "Bridging Visa",
-            "active": True,
-            "document_type_key": None,
-        },
-    )
+    fields = {
+        "notification_type_key": key,
+        "label": "Bridging Visa",
+        "active": True,
+        "document_type_key": None,
+    }
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_notification_type"):
+        admin_module_client.seed_notification_type(fields)
+        return
+    if app.state.gateway.get_by_id("Notification_Type_Config", key) is not None:
+        return
+    app.state.gateway.create("Notification_Type_Config", fields)
 
 
 def test_create_rfi_computes_reminder_date_from_lead_days() -> None:
@@ -91,7 +114,9 @@ def test_mark_rfi_handled_excludes_it_from_open_list() -> None:
     assert response.status_code == 200
     assert response.json()["handled"] is True
 
-    open_list = client.get("/rfi-requests", params={"application_id": application_id}).json()
+    open_list = client.get(
+        "/rfi-requests", params={"application_id": application_id}
+    ).json()
     assert all(rfi["rfi_request_id"] != created["rfi_request_id"] for rfi in open_list)
 
 
@@ -112,7 +137,10 @@ def test_create_and_mark_notification_handled() -> None:
 
     created = client.post(
         f"/applications/{application_id}/notifications",
-        json={"notification_type": "bridging_visa-1", "details": {"arrival_time": "10am"}},
+        json={
+            "notification_type": "bridging_visa-1",
+            "details": {"arrival_time": "10am"},
+        },
     )
     assert created.status_code == 201
     notification_id = created.json()["notification_id"]

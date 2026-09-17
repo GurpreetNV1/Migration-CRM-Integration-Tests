@@ -7,11 +7,26 @@ from fastapi.testclient import TestClient
 client = TestClient(app)
 
 
-def _seed_application(visa_type: str, trn: str) -> str:
+def _seed_schema(visa_type: str) -> None:
+    # AdminModuleApplicationTypeSchemaRepository always reads through app.state.admin_module_client,
+    # not app.state.gateway directly -- see application/conftest.py's module-level comment.
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_application_type_schema"):
+        admin_module_client.seed_application_type_schema(visa_type, {})
+        return
+    if (
+        app.state.gateway.get_by_id("Application_Type_Field_Schemas", visa_type)
+        is not None
+    ):
+        return
     app.state.gateway.create(
         "Application_Type_Field_Schemas",
-        {"id": visa_type, "visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps([])},
+        {"visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps({})},
     )
+
+
+def _seed_application(visa_type: str, trn: str) -> str:
+    _seed_schema(visa_type)
     application_id = client.post(
         "/applications",
         json={
@@ -39,20 +54,25 @@ def test_process_matches_by_trn_and_creates_rfi_request() -> None:
     rfi_type_key = f"S56-IDP-{uuid.uuid4().hex[:8]}"
     document_type_key = f"S56_DOC-{uuid.uuid4().hex[:8]}"
     trn = f"TRN-IDP-{uuid.uuid4().hex[:8]}"
-    app.state.gateway.create(
-        "RFI_Type_Config",
-        {
-            "id": rfi_type_key,
-            "rfi_type_key": rfi_type_key,
-            "label": "Section 56",
-            "active": True,
-            "document_type_key": document_type_key,
-        },
-    )
+    # AdminModuleTypeConfigRepository always reads through app.state.admin_module_client, not
+    # app.state.gateway directly (same situation as _seed_schema above).
+    rfi_type_fields = {
+        "rfi_type_key": rfi_type_key,
+        "label": "Section 56",
+        "active": True,
+        "document_type_key": document_type_key,
+    }
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_rfi_type"):
+        admin_module_client.seed_rfi_type(rfi_type_fields)
+    else:
+        app.state.gateway.create("RFI_Type_Config", rfi_type_fields)
     application_id = _seed_application(f"Inbound-Visa-{uuid.uuid4().hex[:8]}", trn)
 
     log = app.state.inbound_document_processing_service.process(
-        document_type_key, {"trn": trn, "last_date_for_submission": "2026-10-01"}, "drv-1"
+        document_type_key,
+        {"trn": trn, "last_date_for_submission": "2026-10-01"},
+        "drv-1",
     )
 
     assert log.match_status.value == "matched"

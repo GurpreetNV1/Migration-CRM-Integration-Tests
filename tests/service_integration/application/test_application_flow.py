@@ -8,19 +8,39 @@ from fastapi.testclient import TestClient
 client = TestClient(app)
 
 
-def _seed_schema(visa_type: str = "Student", allowed_fields: list[str] | None = None) -> None:
+def _seed_schema(
+    visa_type: str = "Student", allowed_fields: list[str] | None = None
+) -> None:
+    # AdminModuleApplicationTypeSchemaRepository always reads through app.state.admin_module_client
+    # (main.py wires it unconditionally), never app.state.gateway directly -- which backing store
+    # actually needs this row depends on which admin_module_client THIS run wired:
+    #   - memory mode: stays InMemoryAdminModuleClient (this folder's own conftest.py only ever
+    #     overrides data_gateway_mode in that branch) -- .seed_application_type_schema() is the
+    #     only thing that reaches it (found live 2026-09-17: the gateway.create() call below,
+    #     copied in from elsewhere, left this and 8 sibling tests failing in memory mode -- the
+    #     original, single-mode test_application_flow.py calls seed_application_type_schema
+    #     directly, never gateway.create).
+    #   - real mode: conftest.py swaps it to a real, read-only AdminModuleHttpClient whenever
+    #     TEST_ADMIN_MODULE_URL is set, which reads the real Gateway's own tab instead -- routed
+    #     through _foreign_tab_gateway.py's ForeignTabAwareGatewayClient (admin-module-owned).
+    fields = dict.fromkeys(allowed_fields or ["course_name"])
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_application_type_schema"):
+        admin_module_client.seed_application_type_schema(visa_type, fields)
+        return
+
     gateway = app.state.gateway
+    if gateway.get_by_id("Application_Type_Field_Schemas", visa_type) is not None:
+        return
     gateway.create(
         "Application_Type_Field_Schemas",
-        {
-            "id": visa_type,
-            "visa_type": visa_type,
-            "allowed_dynamic_fields_json": json.dumps(dict.fromkeys(allowed_fields or ["course_name"])),
-        },
+        {"visa_type": visa_type, "allowed_dynamic_fields_json": json.dumps(fields)},
     )
 
 
-def _create_application(visa_type: str = "Student", dynamic_fields: dict | None = None) -> dict:
+def _create_application(
+    visa_type: str = "Student", dynamic_fields: dict | None = None
+) -> dict:
     response = client.post(
         "/applications",
         json={
@@ -101,7 +121,9 @@ def test_record_trn() -> None:
     _seed_schema("Student-5")
     created = _create_application("Student-5")
 
-    response = client.post(f"/applications/{created['application_id']}/trn", json={"trn": "TRN-1"})
+    response = client.post(
+        f"/applications/{created['application_id']}/trn", json={"trn": "TRN-1"}
+    )
 
     assert response.status_code == 200
     assert response.json()["trn"] == "TRN-1"
@@ -121,25 +143,35 @@ def test_record_outcome() -> None:
 
 def test_compliance_status_reflects_active_checklist_items() -> None:
     _seed_schema("Student-7")
-    gateway = app.state.gateway
-    gateway.create(
-        "Compliance_Checklist_Item",
-        {
-            "id": "form_956_uploaded",
-            "checklist_key": "form_956_uploaded",
-            "label": "Form 956",
-            "applies_to": "Application",
-            "active": True,
-        },
-    )
+    checklist_item = {
+        "checklist_key": "form_956_uploaded",
+        "label": "Form 956",
+        "applies_to": "Application",
+        "active": True,
+    }
+    admin_module_client = app.state.admin_module_client
+    if hasattr(admin_module_client, "seed_compliance_checklist_item"):
+        admin_module_client.seed_compliance_checklist_item(checklist_item)
+    else:
+        gateway = app.state.gateway
+        if (
+            gateway.get_by_id(
+                "Compliance_Checklist_Item", checklist_item["checklist_key"]
+            )
+            is None
+        ):
+            gateway.create("Compliance_Checklist_Item", checklist_item)
     created = _create_application("Student-7")
 
-    response = client.get(f"/applications/{created['application_id']}/compliance-status")
+    response = client.get(
+        f"/applications/{created['application_id']}/compliance-status"
+    )
 
     assert response.status_code == 200
     body = response.json()
     assert any(
-        item["checklist_key"] == "form_956_uploaded" and not item["completed"] for item in body
+        item["checklist_key"] == "form_956_uploaded" and not item["completed"]
+        for item in body
     )
 
 

@@ -15,9 +15,14 @@ from app.main import app, build_app_state
 from app.settings import Settings
 
 # This service's own test files (test_application_flow.py, test_art_review_flow.py, etc.) seed
-# prerequisite rows into Admin-Module-owned config tabs directly via app.state.gateway -- fine
-# against the in-memory stand-in, rejected by the real Gateway's ownership enforcement. See
-# _foreign_tab_gateway.py, one level up, for why and how this is handled in real mode only.
+# prerequisite rows into Admin-Module-owned config tabs. AdminModule*Repository always reads
+# through app.state.admin_module_client, never app.state.gateway directly -- in memory mode the
+# in-memory client's own seed_*() methods are the only thing that reaches it (a direct
+# gateway.create() there is a no-op as far as any AdminModule*Repository lookup is concerned,
+# found live 2026-09-17 breaking 30 tests across 5 files in this folder); in real mode
+# admin_module_client becomes a real, read-only AdminModuleHttpClient, so seeding has to land in
+# the real Gateway's own tab instead, routed through _foreign_tab_gateway.py's
+# ForeignTabAwareGatewayClient (one level up) since every one of these tabs is admin-module-owned.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 _mode = os.environ.get("TEST_GATEWAY_MODE", "real")
@@ -62,3 +67,14 @@ if _mode == "real":
     app.state.gateway = ForeignTabAwareGatewayClient(app.state.gateway, _gateway_url)
 else:
     build_app_state(app, Settings(data_gateway_mode="memory"))
+
+# Test-only RoleHierarchy fixture rows for the in-memory Admin Module client -- mirrors this
+# service's own (single-mode) tests/conftest.py exactly. Needed so RoleAuthorizationChecker-backed
+# checks (e.g. ART decision-authorization) have a hierarchy_level to compare against. Real mode
+# skips this: the real Role_Hierarchy sheet already has exactly these 3 rows for real (see
+# New_Integrations_2026-09-16.md section 13's cleanup), and the real AdminModuleHttpClient has no
+# seed method anyway. Org's real role hierarchy is exactly 3 flat tiers: Owner > Admin > Consultant.
+if hasattr(app.state.admin_module_client, "seed_role_hierarchy_level"):
+    app.state.admin_module_client.seed_role_hierarchy_level("Consultant", 1)
+    app.state.admin_module_client.seed_role_hierarchy_level("Admin", 2)
+    app.state.admin_module_client.seed_role_hierarchy_level("Owner", 3)

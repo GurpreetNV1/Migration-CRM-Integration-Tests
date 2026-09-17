@@ -1,4 +1,5 @@
 import json
+import random
 
 from app.main import app
 from fastapi.testclient import TestClient
@@ -42,13 +43,12 @@ _seed_system_config_once("rating_ladder", ["Lost", "Cold", "Warm", "Hot"])
 
 
 def _seed_lead_row(
-    row_number: int,
     name: str,
     email: str = "",
     phone: str = "",
     enquiry_message: str = "",
     conversion: str = "",
-) -> None:
+) -> int:
     # app.state.external_enquiry_sheet_client stays the in-memory fake in BOTH gateway modes --
     # EXTERNAL_ENQUIRY_INGESTION_MODE is a separate axis this copied conftest.py never overrides,
     # so it keeps Settings' own "memory" default regardless of TEST_GATEWAY_MODE. Deliberate: the
@@ -56,6 +56,15 @@ def _seed_lead_row(
     # dual-mode suite proves the CRM's own mirror/convert logic against real Sheets-backed CRM
     # tabs (External_Enquiry_Lead, Contact, Note), never against that external tool itself (that
     # was proven live manually, see New_Integrations_2026-09-16.md section 15).
+    #
+    # Unique per call rather than a fixed row_number -- External_Enquiry_Lead is a real, shared,
+    # persisted Gateway tab even though the sheet client itself is fake, and both the auto-convert
+    # and manual-convert paths are idempotent no-ops for an already-converted row. Found live
+    # 2026-09-17: a fixed row_number's SECOND real-mode run found the previous run's own already-
+    # converted mirror row, so the manual-convert endpoint correctly no-op'd instead of actually
+    # calling mark_converted this run -- failing this test's own "was mark_converted called"
+    # assertion. Same reasoning as application/test_client_registration_gate_flow.py's coupon fix.
+    row_number = random.randint(100_000, 999_999)
     app.state.external_enquiry_sheet_client.seed_row(
         row_number,
         name=name,
@@ -64,11 +73,12 @@ def _seed_lead_row(
         enquiry_message=enquiry_message,
         conversion=conversion,
     )
+    return row_number
 
 
 def test_poll_mirrors_every_row_regardless_of_conversion_status() -> None:
-    _seed_lead_row(
-        101, name="Not Yet Lead", email="notyet@example.com", conversion="Not yet"
+    row_number = _seed_lead_row(
+        name="Not Yet Lead", email="notyet@example.com", conversion="Not yet"
     )
 
     app.state.external_enquiry_ingestion_scheduler.trigger_poll()
@@ -76,14 +86,13 @@ def test_poll_mirrors_every_row_regardless_of_conversion_status() -> None:
     response = client.get("/external-enquiry-leads")
     assert response.status_code == 200
     leads_by_row = {lead["row_number"]: lead for lead in response.json()}
-    assert leads_by_row[101]["name"] == "Not Yet Lead"
-    assert leads_by_row[101]["conversion"] == "Not yet"
-    assert leads_by_row[101]["contact_id"] is None
+    assert leads_by_row[row_number]["name"] == "Not Yet Lead"
+    assert leads_by_row[row_number]["conversion"] == "Not yet"
+    assert leads_by_row[row_number]["contact_id"] is None
 
 
 def test_poll_auto_converts_yes_rows_into_a_real_prospect_contact() -> None:
-    _seed_lead_row(
-        102,
+    row_number = _seed_lead_row(
         name="Auto Yes Lead",
         email="autoyes@example.com",
         enquiry_message="Interested in a student visa",
@@ -93,7 +102,7 @@ def test_poll_auto_converts_yes_rows_into_a_real_prospect_contact() -> None:
     app.state.external_enquiry_ingestion_scheduler.trigger_poll()
 
     response = client.get("/external-enquiry-leads")
-    lead = next(row for row in response.json() if row["row_number"] == 102)
+    lead = next(row for row in response.json() if row["row_number"] == row_number)
     assert lead["contact_id"] is not None
 
     contact = client.get(f"/contacts/{lead['contact_id']}")
@@ -102,8 +111,7 @@ def test_poll_auto_converts_yes_rows_into_a_real_prospect_contact() -> None:
 
 
 def test_manual_convert_creates_a_prospect_and_writes_back_to_the_sheet() -> None:
-    _seed_lead_row(
-        103,
+    row_number = _seed_lead_row(
         name="Manual Convert Lead",
         email="manualconvert@example.com",
         enquiry_message="Interested in a partner visa",
@@ -111,12 +119,15 @@ def test_manual_convert_creates_a_prospect_and_writes_back_to_the_sheet() -> Non
     )
     app.state.external_enquiry_ingestion_scheduler.trigger_poll()
 
-    response = client.post("/external-enquiry-leads/row_103/convert")
+    response = client.post(f"/external-enquiry-leads/row_{row_number}/convert")
 
     assert response.status_code == 200
     body = response.json()
     assert body["contact_id"] is not None
-    assert 103 in app.state.external_enquiry_sheet_client.marked_converted_row_numbers
+    assert (
+        row_number
+        in app.state.external_enquiry_sheet_client.marked_converted_row_numbers
+    )
 
     contact = client.get(f"/contacts/{body['contact_id']}")
     assert contact.status_code == 200
