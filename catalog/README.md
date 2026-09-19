@@ -82,9 +82,14 @@ below are not all reconciled against that live total yet)
 | Cleanup Service | [18_cleanup_service.md](18_cleanup_service.md) | 36 |
 | Notes Service | [19_notes_service.md](19_notes_service.md) | 47 |
 
-Not yet built (no tests to catalog): Email Drafting logic itself (Email Draft Service has only a
-health check so far — see its own catalog entry), Reports Service, Client Portal Service,
-Regional/Office Management Service, OTP Forwarding Module.
+Not yet built: Email Drafting logic itself (Email Draft Service has only a health check so far —
+see its own catalog entry), Regional/Office Management Service, OTP Forwarding Module.
+
+**Built but not yet catalogued here** (no `catalog/<n>.md` entry or row in the table above yet —
+this reflects a gap in this repo's own catalog upkeep, not the service's build status): Reports
+Service and Client Portal Service are both real, tested implementations in `server/services/`
+(confirmed by direct code review, 2026-09-19) — add their catalog entries next time this table is
+updated.
 
 **These integration tests also physically live in this repo now**, under
 `../tests/service_integration/<service>/` — verbatim copies of the same files listed in each
